@@ -1,0 +1,9 @@
+pt/ulisboa/tecnico/hdsledger/communication/PrepareMessage.class
+pt/ulisboa/tecnico/hdsledger/communication/Link$1.class
+pt/ulisboa/tecnico/hdsledger/communication/ConsensusMessage.class
+pt/ulisboa/tecnico/hdsledger/communication/PrePrepareMessage.class
+pt/ulisboa/tecnico/hdsledger/communication/Link.class
+pt/ulisboa/tecnico/hdsledger/communication/CommitMessage.class
+pt/ulisboa/tecnico/hdsledger/communication/builder/ConsensusMessageBuilder.class
+pt/ulisboa/tecnico/hdsledger/communication/Message.class
+pt/ulisboa/tecnico/hdsledger/communication/Message$Type.class

@@ -1,0 +1,6 @@
+pt/ulisboa/tecnico/hdsledger/service/models/MessageBucket.class
+pt/ulisboa/tecnico/hdsledger/service/Node.class
+pt/ulisboa/tecnico/hdsledger/service/models/InstanceInfo.class
+pt/ulisboa/tecnico/hdsledger/service/services/UDPService.class
+pt/ulisboa/tecnico/hdsledger/service/services/NodeService.class
+pt/ulisboa/tecnico/hdsledger/service/services/NodeService$1.class
