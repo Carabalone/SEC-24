@@ -11,6 +11,8 @@ public class Message implements Serializable {
     // Message type
     private Type type;
 
+    private String b64DigitalSignature;
+
     public enum Type {
         APPEND, PRE_PREPARE, PREPARE, COMMIT, ACK, IGNORE;
     }
@@ -42,5 +44,9 @@ public class Message implements Serializable {
 
     public void setType(Type type) {
         this.type = type;
+    }
+
+    public void authenticate() {
+
     }
 }

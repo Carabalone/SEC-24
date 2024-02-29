@@ -29,9 +29,9 @@ public class Node {
             ProcessConfig leaderConfig = Arrays.stream(nodeConfigs).filter(ProcessConfig::isLeader).findAny().get();
             ProcessConfig nodeConfig = Arrays.stream(nodeConfigs).filter(c -> c.getId().equals(id)).findAny().get();
 
-            LOGGER.log(Level.INFO, MessageFormat.format("{0} - Running at {1}:{2}; is leader: {3}",
+            LOGGER.log(Level.INFO, MessageFormat.format("{0} - Running at {1}:{2}; is leader: {3}; public key: {4}; private key: {5}",
                     nodeConfig.getId(), nodeConfig.getHostname(), nodeConfig.getPort(),
-                    nodeConfig.isLeader()));
+                    nodeConfig.isLeader(), nodeConfig.getPrivateKeyPath(), nodeConfig.getPublicKeyPath()));
 
             // Abstraction to send and receive messages
             Link linkToNodes = new Link(nodeConfig, nodeConfig.getPort(), nodeConfigs,
