@@ -1,6 +1,7 @@
-/home/guilherme/Desktop/faculdade/MEIC/1ano/2semestre/1periodo/SEC/proj/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/ProcessConfigBuilder.java
-/home/guilherme/Desktop/faculdade/MEIC/1ano/2semestre/1periodo/SEC/proj/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/CustomLogger.java
-/home/guilherme/Desktop/faculdade/MEIC/1ano/2semestre/1periodo/SEC/proj/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/HDSSException.java
-/home/guilherme/Desktop/faculdade/MEIC/1ano/2semestre/1periodo/SEC/proj/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/ErrorMessage.java
-/home/guilherme/Desktop/faculdade/MEIC/1ano/2semestre/1periodo/SEC/proj/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/CollapsingSet.java
-/home/guilherme/Desktop/faculdade/MEIC/1ano/2semestre/1periodo/SEC/proj/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/ProcessConfig.java
+/home/joaofurtado/MEIC/SEC/SEC-24/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/ErrorMessage.java
+/home/joaofurtado/MEIC/SEC/SEC-24/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/HDSSException.java
+/home/joaofurtado/MEIC/SEC/SEC-24/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/ProcessConfig.java
+/home/joaofurtado/MEIC/SEC/SEC-24/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/ProcessConfigBuilder.java
+/home/joaofurtado/MEIC/SEC/SEC-24/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/CustomLogger.java
+/home/joaofurtado/MEIC/SEC/SEC-24/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/DigitalSignature.java
+/home/joaofurtado/MEIC/SEC/SEC-24/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/CollapsingSet.java
