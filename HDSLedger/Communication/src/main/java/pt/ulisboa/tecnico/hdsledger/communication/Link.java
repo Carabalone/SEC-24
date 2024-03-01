@@ -154,9 +154,23 @@ public class Link {
     public void unreliableSend(InetAddress hostname, int port, Message data) {
         new Thread(() -> {
             try {
-                byte[] buf = new Gson().toJson(data).getBytes();
+                // Sign message
+                String jsonString = new Gson().toJson(data);
+                Optional<String> signature;
+                try {
+                    signature = Optional.of(DigitalSignature.sign(jsonString, config.getPrivateKeyPath()));
+                } catch (Exception e) {
+                    throw new HDSSException(ErrorMessage.UnableToSignMessage);
+                }
+
+                // Serialize message
+                SignedMessage message = new SignedMessage(jsonString, signature.get());
+                byte[] buf = new Gson().toJson(message).getBytes();
+
+                // Create UDP packet
                 DatagramPacket packet = new DatagramPacket(buf, buf.length, hostname, port);
                 socket.send(packet);
+
             } catch (IOException e) {
                 e.printStackTrace();
                 throw new HDSSException(ErrorMessage.SocketSendingError);
@@ -169,14 +183,14 @@ public class Link {
      */
     public Message receive() throws IOException, ClassNotFoundException {
 
-        Message message = null;
-        String serialized = "";
+        Message message;
         Boolean local = false;
+        SignedMessage responseData = null;
         DatagramPacket response = null;
-        
+
         if (this.localhostQueue.size() > 0) {
             message = this.localhostQueue.poll();
-            local = true; 
+            local = true;
             this.receivedAcks.add(message.getMessageId());
         } else {
             byte[] buf = new byte[65535];
@@ -185,8 +199,20 @@ public class Link {
             socket.receive(response);
 
             byte[] buffer = Arrays.copyOfRange(response.getData(), 0, response.getLength());
-            serialized = new String(buffer);
-            message = new Gson().fromJson(serialized, Message.class);
+            responseData = new Gson().fromJson(new String(buffer), SignedMessage.class);
+            message = new Gson().fromJson(responseData.getMessage(), Message.class);
+
+            // Verify signature
+            if (!DigitalSignature.verifySignature(responseData.getMessage(), responseData.getSignature(),
+                    nodes.get(message.getSenderId()).getPublicKeyPath())) {
+
+                message.setType(Message.Type.IGNORE);
+
+                LOGGER.log(Level.INFO, MessageFormat.format("Received a message with invalid signature from {0}:{1}",
+                        InetAddress.getByName(response.getAddress().getHostName()), response.getPort()));
+
+                return message;
+            }
         }
 
         String senderId = message.getSenderId();
@@ -204,7 +230,7 @@ public class Link {
 
         // It's not an ACK -> Deserialize for the correct type
         if (!local)
-            message = new Gson().fromJson(serialized, this.messageClass);
+            message = new Gson().fromJson(responseData.getMessage(), this.messageClass);
 
         boolean isRepeated = !receivedMessages.get(message.getSenderId()).add(messageId);
         Type originalType = message.getType();
