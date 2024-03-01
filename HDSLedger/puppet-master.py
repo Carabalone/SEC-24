@@ -36,6 +36,16 @@ with open(f"Service/src/main/resources/{server_config}") as f:
                 f"{terminal} sh -c \"cd Service; mvn exec:java -Dexec.args='{key['id']} {server_config}' ; sleep 500\"")
             sys.exit()
 
+with open(f"Client/src/main/resources/{server_config}") as f:
+    data = json.load(f)
+    processes = list()
+    for key in data:
+        pid = os.fork()
+        if pid == 0:
+            os.system(
+                f"{terminal} sh -c \"cd Client; mvn exec:java -Dexec.args='{key['id']}' ; sleep 500\"")
+            sys.exit()
+
 signal.signal(signal.SIGINT, quit_handler)
 
 while True:

@@ -1,11 +1,19 @@
 package pt.ulisboa.tecnico.hdsledger.client;
 
-import List
+import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
+import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
+import java.util.List;
 
-class Client {
+public class Client {
     private static final CustomLogger LOGGER = new CustomLogger(Client.class.getName());
 
-    private List<ProcessConfig> nodes;
-
     private ProcessConfig config;
+    private ProcessConfig[] nodes;
+    private ProcessConfig[] clients;
+
+    public final static void main(String[] args) {
+        String clientId = args[0];
+
+        System.out.println("I'm alive: " + clientId);
+    }
 }

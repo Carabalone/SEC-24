@@ -8,9 +8,9 @@ public class PrepareMessage {
 
     private String leaderSignature;
 
-    public PrepareMessage(String value, String leaderSignature) {
+    public PrepareMessage(String value/*, String leaderSignature*/) {
         this.value = value;
-        this.leaderSignature = leaderSignature;
+        this.leaderSignature = "TODO: tirar";
     }
 
     public String getValue() {
