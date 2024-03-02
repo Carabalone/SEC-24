@@ -6,7 +6,9 @@ public enum ErrorMessage {
     NoSuchNode("Can't send a message to a non existing node"),
     SocketSendingError("Error while sending message"),
     CannotOpenSocket("Error while opening socket"),
-    UnableToSignMessage("Could not sign the message. Check if the key path is correct");
+    UnableToSignMessage("Could not sign the message. Check if the key path is correct"),
+    FailedToReadPublicKey("Could not read the public key"),
+    CannotParseMessage("Could not parse the message");
 
     private final String message;
 

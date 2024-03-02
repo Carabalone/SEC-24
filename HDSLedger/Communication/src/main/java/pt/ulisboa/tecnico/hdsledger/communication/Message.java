@@ -14,7 +14,9 @@ public class Message implements Serializable {
     private String b64DigitalSignature;
 
     public enum Type {
-        APPEND, PRE_PREPARE, PREPARE, COMMIT, ACK, IGNORE;
+        APPEND,
+        PRE_PREPARE, PREPARE, COMMIT, ACK, IGNORE,
+        REPLY;
     }
 
     public Message(String senderId, Type type) {

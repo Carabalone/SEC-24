@@ -13,6 +13,7 @@
         <module>Utilities</module>
         <module>Communication</module>
         <module>Client</module>
+        <module>Library</module>
     </modules>
 
 </project>
