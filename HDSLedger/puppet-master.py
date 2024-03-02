@@ -12,10 +12,20 @@ terminal = "kitty"
 # Blockchain node configuration file name
 server_configs = [
     "regular_config.json",
+    "small_config.json",
+    "tiny_config.json"
 ]
 
+index = 0
+if (len(sys.argv) > 1):
+    try:
+        index = int(sys.argv[1])
+    except:
+        index = 0
 
-server_config = server_configs[0]
+server_config = server_configs[index]
+
+print("Choosing config: " + server_config)
 
 def quit_handler(*args):
     os.system(f"pkill -i {terminal}")
@@ -43,7 +53,7 @@ with open(f"Client/src/main/resources/{server_config}") as f:
         pid = os.fork()
         if pid == 0:
             os.system(
-                f"{terminal} sh -c \"cd Client; mvn exec:java -Dexec.args='{key['id']}' ; sleep 500\"")
+                f"{terminal} sh -c \"cd Client; mvn exec:java -Dexec.args='{key['id']} {server_config}' ; sleep 500\"")
             sys.exit()
 
 signal.signal(signal.SIGINT, quit_handler)

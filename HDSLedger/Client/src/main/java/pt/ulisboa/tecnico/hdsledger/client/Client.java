@@ -1,25 +1,20 @@
 package pt.ulisboa.tecnico.hdsledger.client;
 
 import pt.ulisboa.tecnico.hdsledger.library.Library;
-import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
-import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
-import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfigBuilder;
+import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
+import java.util.Arrays;
+import java.util.Optional;
 import java.util.Scanner;
 
 public class Client {
     private static final CustomLogger LOGGER = new CustomLogger(Client.class.getName());
 
-    private final String nodePath = "../Service/src/main/java/resources/regular_config.json";
-    private final String clientPath = "src/main/java/resources/regular_config.json";
+    private static final String nodePath = "../Service/src/main/resources/";
+    private static final String clientPath = "src/main/resources/";
 
-    private ProcessConfig config;
-    private ProcessConfig[] nodes;
-    private ProcessConfig[] clients;
 
     public Client() {
-        nodes = new ProcessConfigBuilder().fromFile(nodePath);
-        clients = new ProcessConfigBuilder().fromFile(clientPath);
     }
 
     private static void help() {
@@ -27,47 +22,70 @@ public class Client {
         System.out.println("append <string_to_append>");
     }
 
-    public final void main(String[] args) {
-        String clientId = args[0];
+    public static final void main(String[] args) throws HDSSException {
+        try {
 
-        Scanner scanner = new Scanner(System.in);
+            System.out.println("Working Directory = " + System.getProperty("user.dir"));
 
-        System.out.println("I'm alive! " + clientId);
+            String clientId = args[0];
+            String configOption = args[1];
 
-        System.out.println("You can start pressing commands: ");
-        Client.help();
+            ProcessConfig[] nodes, clients;
 
-        // Library to interact with the blockchain
-        final Library library = new Library(config, nodes, clients, false);
-        library.listen();
+            nodes = new ProcessConfigBuilder().fromFile(nodePath + configOption);
+            clients = new ProcessConfigBuilder().fromFile(clientPath + configOption);
+            Optional<ProcessConfig> config = Arrays.stream(clients).filter(c -> c.getId().equals(clientId)).findFirst();
 
-        while (true) {
-            System.out.print("$ ");
-
-            String line = scanner.nextLine().trim();
-            String[] terms = line.split("\\s+");
-
-            if (terms.length < 1)
-                System.out.println("Input Something.");
-
-            String command = terms[0];
-
-            switch (command) {
-                case "help" -> {
-                    help();
-                    break;
-                }
-                case "append" -> {
-                    if (terms.length < 2 )
-                        System.out.println("bad input, usage: append <string_to_append>");
-                    System.out.println("appending " + terms[1]);
-                    library.append(terms[1]);
-                }
-                default -> {
-                    System.out.println("unrecognized command");
-                }
+            if (config.isEmpty()) {
+                throw new HDSSException(ErrorMessage.ClientNotFound);
             }
 
+            Scanner scanner = new Scanner(System.in);
+
+            System.out.println("I'm alive! " + clientId);
+
+            System.out.println("You can start pressing commands: ");
+            Client.help();
+
+            // Library to interact with the blockchain
+            final Library library = new Library(config.get(), nodes, clients, false);
+            library.listen();
+
+            while (true) {
+                System.out.print("$ ");
+
+                String line = scanner.nextLine().trim();
+                String[] terms = line.split("\\s+");
+
+                if (terms.length < 1)
+                    System.out.println("Input Something.");
+
+                String command = terms[0];
+
+                switch (command) {
+                    case "help" -> {
+                        help();
+                        break;
+                    }
+                    case "append" -> {
+                        if (terms.length < 2)
+                            System.out.println("bad input, usage: append <string_to_append>");
+                        System.out.println("appending " + terms[1]);
+                        library.append(terms[1]);
+                    }
+
+                    case "ping" -> {
+                        library.ping();
+                    }
+
+                    default -> {
+                        System.out.println("unrecognized command");
+                    }
+                }
+
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }

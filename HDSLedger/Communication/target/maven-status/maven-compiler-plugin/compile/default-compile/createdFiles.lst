@@ -6,8 +6,8 @@ pt/ulisboa/tecnico/hdsledger/communication/Message$Type.class
 pt/ulisboa/tecnico/hdsledger/communication/PrepareMessage.class
 pt/ulisboa/tecnico/hdsledger/communication/SignedMessage.class
 pt/ulisboa/tecnico/hdsledger/communication/ConsensusMessage.class
-pt/ulisboa/tecnico/hdsledger/communication/PrePrepareMessage.class
 pt/ulisboa/tecnico/hdsledger/communication/Link.class
+pt/ulisboa/tecnico/hdsledger/communication/PrePrepareMessage.class
 pt/ulisboa/tecnico/hdsledger/communication/LedgerRequest.class
 pt/ulisboa/tecnico/hdsledger/communication/LedgerResponse.class
 pt/ulisboa/tecnico/hdsledger/communication/Message.class

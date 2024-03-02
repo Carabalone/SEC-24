@@ -4,31 +4,31 @@
         "isLeader": true,
         "hostname": "localhost",
         "port": 3001,
-        "publicKeyPath": "HDSLedger/keys/node/key_1_public.pem",
-        "privateKeyPath": "HDSLedger/keys/node/key_1_private.pem"
+        "publicKeyPath": "../keys/node/key_1_public.pem",
+        "privateKeyPath": "../keys/node/key_1_private.pem"
     },
     {
         "id": "2",
         "isLeader": false,
         "hostname": "localhost",
         "port": 3002,
-        "publicKeyPath": "HDSLedger/keys/node/key_2_public.pem",
-        "privateKeyPath": "HDSLedger/keys/node/key_2_private.pem"
+        "publicKeyPath": "../keys/node/key_2_public.pem",
+        "privateKeyPath": "../keys/node/key_2_private.pem"
     },
     {
         "id": "3",
         "isLeader": false,
         "hostname": "localhost",
         "port": 3003,
-        "publicKeyPath": "HDSLedger/keys/node/key_3_public.pem",
-        "privateKeyPath": "HDSLedger/keys/node/key_3_private.pem"
+        "publicKeyPath": "../keys/node/key_3_public.pem",
+        "privateKeyPath": "../keys/node/key_3_private.pem"
     },
     {
         "id": "4",
         "isLeader": false,
         "hostname": "localhost",
         "port": 3004,
-        "publicKeyPath": "HDSLedger/keys/node/key_4_public.pem",
-        "privateKeyPath": "HDSLedger/keys/node/key_4_private.pem"
+        "publicKeyPath": "../keys/node/key_4_public.pem",
+        "privateKeyPath": "../keys/node/key_4_private.pem"
     }
 ]

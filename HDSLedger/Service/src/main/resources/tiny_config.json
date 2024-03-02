@@ -1,0 +1,10 @@
+[
+    {   
+        "id": "1",
+        "isLeader": true,
+        "hostname": "localhost",
+        "port": 3001,
+        "publicKeyPath": "../keys/node/key_1_public.pem",
+        "privateKeyPath": "../keys/node/key_1_private.pem"
+    }
+]

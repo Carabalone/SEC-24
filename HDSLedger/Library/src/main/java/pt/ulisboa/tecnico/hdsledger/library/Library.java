@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
+import javax.print.attribute.standard.JobMessageFromOperator;
 import java.io.IOException;
 import java.security.PublicKey;
 import java.text.MessageFormat;
@@ -87,6 +88,12 @@ public class Library {
         //this.requests.put(currentNonce, request);
     }
 
+    public void ping() {
+        LOGGER.log(Level.INFO, MessageFormat.format("{0} - Broadcasting PING message", config.getId()));
+        System.out.println("Broadcasting ping message.");
+        link.broadcast(new Message(config.getId(), Message.Type.PING));
+    }
+
     /*
      * Find id by public key
      *
@@ -137,6 +144,10 @@ public class Library {
      * @param response LedgerResponse to verify
      */
 
+    /*
+    *  this listen to responses from the blockchain, not from the client
+    */
+
     public void listen() {
         try {
             // Thread to listen on every request
@@ -162,6 +173,10 @@ public class Library {
                             case REPLY -> {
                                 LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received REPLY message from {1}",
                                         config.getId(), message.getSenderId()));
+                            }
+                            case PING -> {
+                                LOGGER.log(Level.INFO, MessageFormat.format("{0} - Receved PING msg from {1}", config.getId(), message.getSenderId()));
+                                System.out.println("Received ping from: " + message.getSenderId());
                             }
                             default -> {
                                 throw new HDSSException(ErrorMessage.CannotParseMessage);

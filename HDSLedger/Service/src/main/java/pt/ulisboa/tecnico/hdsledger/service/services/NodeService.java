@@ -373,6 +373,13 @@ public class NodeService implements UDPService {
                                     LOGGER.log(Level.INFO,
                                             MessageFormat.format("{0} - Received IGNORE message from {1}",
                                                     config.getId(), message.getSenderId()));
+                                case PING ->{
+                                    LOGGER.log(Level.INFO,
+                                            MessageFormat.format("{0} - Received PING message from {1}",
+                                                    config.getId(), message.getSenderId()));
+                                    System.out.println("Received ping from: " + message.getSenderId());
+                                    link.send(message.getSenderId(), new Message(config.getId(), Message.Type.PING));
+                                }
 
                                 default ->
                                     LOGGER.log(Level.INFO,

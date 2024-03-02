@@ -75,7 +75,10 @@ public class Link {
      */
     public void broadcast(Message data) {
         Gson gson = new Gson();
-        nodes.forEach((destId, dest) -> send(destId, gson.fromJson(gson.toJson(data), data.getClass())));
+        nodes.forEach((destId, dest) -> {
+            System.out.println("Sending to: " + destId);
+            send(destId, gson.fromJson(gson.toJson(data), data.getClass()));
+        });
     }
 
     /*
@@ -160,6 +163,7 @@ public class Link {
                 try {
                     signature = Optional.of(DigitalSignature.sign(jsonString, config.getPrivateKeyPath()));
                 } catch (Exception e) {
+                    System.out.println(e.getMessage());
                     throw new HDSSException(ErrorMessage.UnableToSignMessage);
                 }
 

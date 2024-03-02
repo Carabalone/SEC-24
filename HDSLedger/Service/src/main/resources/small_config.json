@@ -14,21 +14,5 @@
         "port": 3002,
         "publicKeyPath": "../keys/node/key_2_public.pem",
         "privateKeyPath": "../keys/node/key_2_private.pem"
-    },
-    {
-        "id": "3",
-        "isLeader": false,
-        "hostname": "localhost",
-        "port": 3003,
-        "publicKeyPath": "../keys/node/key_3_public.pem",
-        "privateKeyPath": "../keys/node/key_3_private.pem"
-    },
-    {
-        "id": "4",
-        "isLeader": false,
-        "hostname": "localhost",
-        "port": 3004,
-        "publicKeyPath": "../keys/node/key_4_public.pem",
-        "privateKeyPath": "../keys/node/key_4_private.pem"
     }
 ]

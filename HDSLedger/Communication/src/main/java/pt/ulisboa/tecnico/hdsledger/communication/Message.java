@@ -16,7 +16,8 @@ public class Message implements Serializable {
     public enum Type {
         APPEND,
         PRE_PREPARE, PREPARE, COMMIT, ACK, IGNORE,
-        REPLY;
+        REPLY,
+        PING;
     }
 
     public Message(String senderId, Type type) {
