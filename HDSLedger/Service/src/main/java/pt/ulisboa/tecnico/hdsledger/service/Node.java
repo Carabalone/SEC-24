@@ -3,7 +3,7 @@ package pt.ulisboa.tecnico.hdsledger.service;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.LedgerRequest;
 import pt.ulisboa.tecnico.hdsledger.communication.Link;
-import pt.ulisboa.tecnico.hdsledger.service.services.LedgerService;
+import pt.ulisboa.tecnico.hdsledger.service.services.BlockchainService;
 import pt.ulisboa.tecnico.hdsledger.service.services.NodeService;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
@@ -49,11 +49,16 @@ public class Node {
             NodeService nodeService = new NodeService(linkToNodes, nodeConfig, leaderConfig,
                     nodeConfigs);
 
-            LedgerService ledgerService = new LedgerService(clientConfigs, linkToClients, nodeConfig,
-                    nodeService, leaderConfig);
+            BlockchainService blockchainService = new BlockchainService(
+                    linkToNodes, linkToClients,
+                    nodeConfig,
+                    nodeConfigs, clientConfigs,
+                    nodeService
+            );
 
             nodeService.listen();
-            ledgerService.listen();
+            blockchainService.listen();
+            System.out.println("listening all");
 
         } catch (Exception e) {
             e.printStackTrace();

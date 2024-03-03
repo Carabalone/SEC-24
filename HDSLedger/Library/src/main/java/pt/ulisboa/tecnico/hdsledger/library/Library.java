@@ -5,7 +5,6 @@ import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
-import javax.print.attribute.standard.JobMessageFromOperator;
 import java.io.IOException;
 import java.security.PublicKey;
 import java.text.MessageFormat;
@@ -71,7 +70,7 @@ public class Library {
 
         // Each LedgerRequest receives a specific ledger request which is serialized and
         // signed
-        LedgerRequestAppend requestCreate = new LedgerRequestAppend(accountPubKey);
+        BlockchainAppendRequest requestCreate = new BlockchainAppendRequest(accountPubKey, stringToAppend, config.getId());
         String serializedCreateRequest = new Gson().toJson(requestCreate);
         String signature;
         try {
@@ -89,7 +88,8 @@ public class Library {
     }
 
     public void ping() {
-
+        System.out.println("Broadcasting ping");
+        link.broadcast(new Message(config.getId(), Message.Type.PING));
     }
 
     /*
@@ -125,6 +125,10 @@ public class Library {
         switch (request.getType()) {
             case APPEND -> {
                 System.out.printf("TODO: LOGGAR ISSO AQUI");
+            }
+
+            case PING -> {
+                System.out.println("Received pong from" + request.getSenderId());
             }
 
             default -> {

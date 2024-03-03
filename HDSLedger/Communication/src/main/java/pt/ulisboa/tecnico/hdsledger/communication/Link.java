@@ -52,6 +52,7 @@ public class Link {
             String id = node.getId();
             this.nodes.put(id, node);
             receivedMessages.put(id, new CollapsingSet());
+
         });
 
         try {
@@ -207,6 +208,12 @@ public class Link {
             message = new Gson().fromJson(responseData.getMessage(), Message.class);
 
             // Verify signature
+
+            nodes.values().forEach(node -> {
+                System.out.println("id: " + node.getId());
+            });
+            System.out.println("Sender ID: " + message.getSenderId());
+
             if (!DigitalSignature.verifySignature(responseData.getMessage(), responseData.getSignature(),
                     nodes.get(message.getSenderId()).getPublicKeyPath())) {
 
