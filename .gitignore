@@ -158,6 +158,9 @@ replay_pid*
 
 ### Maven ###
 target/
+/target/
+*/target/**
+*.lts
 pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.versionsBackup
