@@ -89,9 +89,7 @@ public class Library {
     }
 
     public void ping() {
-        LOGGER.log(Level.INFO, MessageFormat.format("{0} - Broadcasting PING message", config.getId()));
-        System.out.println("Broadcasting ping message.");
-        link.broadcast(new Message(config.getId(), Message.Type.PING));
+
     }
 
     /*

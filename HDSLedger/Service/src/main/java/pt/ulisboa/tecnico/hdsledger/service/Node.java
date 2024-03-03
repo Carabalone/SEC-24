@@ -1,7 +1,9 @@
 package pt.ulisboa.tecnico.hdsledger.service;
 
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
+import pt.ulisboa.tecnico.hdsledger.communication.LedgerRequest;
 import pt.ulisboa.tecnico.hdsledger.communication.Link;
+import pt.ulisboa.tecnico.hdsledger.service.services.LedgerService;
 import pt.ulisboa.tecnico.hdsledger.service.services.NodeService;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
@@ -17,6 +19,8 @@ public class Node {
     // Hardcoded path to files
     private static String nodesConfigPath = "src/main/resources/";
 
+    private static final String clientsConfigPath = "../Client/src/main/resources/regular_config.json";
+
     public static void main(String[] args) {
 
         try {
@@ -26,6 +30,7 @@ public class Node {
 
             // Create configuration instances
             ProcessConfig[] nodeConfigs = new ProcessConfigBuilder().fromFile(nodesConfigPath);
+            ProcessConfig[] clientConfigs = new ProcessConfigBuilder().fromFile(clientsConfigPath);
             ProcessConfig leaderConfig = Arrays.stream(nodeConfigs).filter(ProcessConfig::isLeader).findAny().get();
             ProcessConfig nodeConfig = Arrays.stream(nodeConfigs).filter(c -> c.getId().equals(id)).findAny().get();
 
@@ -37,11 +42,18 @@ public class Node {
             Link linkToNodes = new Link(nodeConfig, nodeConfig.getPort(), nodeConfigs,
                     ConsensusMessage.class);
 
+            Link linkToClients = new Link(nodeConfig, nodeConfig.getClientPort(), clientConfigs,
+                    LedgerRequest.class);
+
             // Services that implement listen from UDPService
             NodeService nodeService = new NodeService(linkToNodes, nodeConfig, leaderConfig,
                     nodeConfigs);
 
+            LedgerService ledgerService = new LedgerService(clientConfigs, linkToClients, nodeConfig,
+                    nodeService, leaderConfig);
+
             nodeService.listen();
+            ledgerService.listen();
 
         } catch (Exception e) {
             e.printStackTrace();

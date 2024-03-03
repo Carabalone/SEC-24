@@ -15,6 +15,8 @@ public class ProcessConfig {
 
     private String privateKeyPath;
 
+    private int clientPort;
+
     public boolean isLeader() {
         return isLeader;
     }
@@ -34,4 +36,8 @@ public class ProcessConfig {
     public String getPublicKeyPath() { return publicKeyPath; }
 
     public String getPrivateKeyPath() { return privateKeyPath; }
+
+    public int getClientPort() { return clientPort; }
+
+    protected void setClientPort(int clientPort) { this.clientPort = clientPort; }
 }
