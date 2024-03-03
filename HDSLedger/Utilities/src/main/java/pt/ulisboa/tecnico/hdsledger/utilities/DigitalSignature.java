@@ -45,7 +45,6 @@ public class DigitalSignature {
         }
     }
 
-
     public static PublicKey readPublicKey(String publicKeyPath)
             throws FileNotFoundException, IOException, NoSuchAlgorithmException, InvalidKeySpecException {
 
@@ -61,11 +60,18 @@ public class DigitalSignature {
             throws FileNotFoundException, IOException, NoSuchAlgorithmException, InvalidKeySpecException {
 
         byte[] privEncoded = readFile(privateKeyPath);
-        PKCS8EncodedKeySpec privSpec = new PKCS8EncodedKeySpec(privEncoded);
-        KeyFactory keyFacPriv = KeyFactory.getInstance("RSA");
-        PrivateKey priv = keyFacPriv.generatePrivate(privSpec);
+        // Convert PEM to PKCS8 format
+        String privateKeyPEM = new String(privEncoded);
+        privateKeyPEM = privateKeyPEM.replace("-----BEGIN PRIVATE KEY-----\n", "");
+        privateKeyPEM = privateKeyPEM.replace("-----END PRIVATE KEY-----", "");
+        privateKeyPEM = privateKeyPEM.replace("\n", "");
+        byte[] decoded = Base64.getDecoder().decode(privateKeyPEM);
 
-        return priv;
+        PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(decoded);
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        PrivateKey privateKey = keyFactory.generatePrivate(keySpec);
+
+        return privateKey;
     }
 
     public static byte[] encrypt(byte[] data, String pathToPrivateKey)

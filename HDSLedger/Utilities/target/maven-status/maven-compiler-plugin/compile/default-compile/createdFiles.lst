@@ -1,8 +1,8 @@
-pt/ulisboa/tecnico/hdsledger/utilities/CollapsingSet.class
 pt/ulisboa/tecnico/hdsledger/utilities/ProcessConfigBuilder.class
+pt/ulisboa/tecnico/hdsledger/utilities/CollapsingSet.class
 pt/ulisboa/tecnico/hdsledger/utilities/ErrorMessage.class
 pt/ulisboa/tecnico/hdsledger/utilities/CustomLog.class
 pt/ulisboa/tecnico/hdsledger/utilities/ProcessConfig.class
 pt/ulisboa/tecnico/hdsledger/utilities/CustomLogger.class
-pt/ulisboa/tecnico/hdsledger/utilities/DigitalSignature.class
 pt/ulisboa/tecnico/hdsledger/utilities/HDSSException.class
+pt/ulisboa/tecnico/hdsledger/utilities/DigitalSignature.class

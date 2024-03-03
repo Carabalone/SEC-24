@@ -1,7 +1,7 @@
-/mnt/c/Users/guilh/OneDrive/Área de Trabalho/Coisas da Faculdade/MEIC/1° ano/2° semestre/1° período/SEC/sec2324-project-base-master/sec2324-project-base/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/CollapsingSet.java
-/mnt/c/Users/guilh/OneDrive/Área de Trabalho/Coisas da Faculdade/MEIC/1° ano/2° semestre/1° período/SEC/sec2324-project-base-master/sec2324-project-base/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/CustomLogger.java
-/mnt/c/Users/guilh/OneDrive/Área de Trabalho/Coisas da Faculdade/MEIC/1° ano/2° semestre/1° período/SEC/sec2324-project-base-master/sec2324-project-base/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/HDSSException.java
-/mnt/c/Users/guilh/OneDrive/Área de Trabalho/Coisas da Faculdade/MEIC/1° ano/2° semestre/1° período/SEC/sec2324-project-base-master/sec2324-project-base/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/ErrorMessage.java
-/mnt/c/Users/guilh/OneDrive/Área de Trabalho/Coisas da Faculdade/MEIC/1° ano/2° semestre/1° período/SEC/sec2324-project-base-master/sec2324-project-base/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/ProcessConfig.java
-/mnt/c/Users/guilh/OneDrive/Área de Trabalho/Coisas da Faculdade/MEIC/1° ano/2° semestre/1° período/SEC/sec2324-project-base-master/sec2324-project-base/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/DigitalSignature.java
-/mnt/c/Users/guilh/OneDrive/Área de Trabalho/Coisas da Faculdade/MEIC/1° ano/2° semestre/1° período/SEC/sec2324-project-base-master/sec2324-project-base/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/ProcessConfigBuilder.java
+/home/joaofurtado/MEIC/SEC/SEC-24/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/ErrorMessage.java
+/home/joaofurtado/MEIC/SEC/SEC-24/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/HDSSException.java
+/home/joaofurtado/MEIC/SEC/SEC-24/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/ProcessConfig.java
+/home/joaofurtado/MEIC/SEC/SEC-24/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/ProcessConfigBuilder.java
+/home/joaofurtado/MEIC/SEC/SEC-24/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/CustomLogger.java
+/home/joaofurtado/MEIC/SEC/SEC-24/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/DigitalSignature.java
+/home/joaofurtado/MEIC/SEC/SEC-24/HDSLedger/Utilities/src/main/java/pt/ulisboa/tecnico/hdsledger/utilities/CollapsingSet.java
