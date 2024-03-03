@@ -50,6 +50,7 @@ public class Library {
         System.arraycopy(clientConfigs, 0, this.allConfigs, nodeConfigs.length, clientConfigs.length);
 
         // Create link to communicate with nodes
+        System.out.println("[LIBRARY] creating link");
         this.link = new Link(clientConfig, clientConfig.getPort(), nodeConfigs, LedgerResponse.class,
                 activateLogs, 5000);
     }
@@ -70,7 +71,7 @@ public class Library {
 
         // Each LedgerRequest receives a specific ledger request which is serialized and
         // signed
-        BlockchainAppendRequest requestCreate = new BlockchainAppendRequest(accountPubKey, stringToAppend, config.getId());
+        /*BlockchainAppendRequest requestCreate = new BlockchainAppendRequest(accountPubKey, stringToAppend, config.getId());
         String serializedCreateRequest = new Gson().toJson(requestCreate);
         String signature;
         try {
@@ -81,7 +82,7 @@ public class Library {
 
         // Send generic ledger request
         LedgerRequest request = new LedgerRequest(this.config.getId(), Message.Type.APPEND, serializedCreateRequest,
-                signature);
+                signature);*/
 
         // Add to pending requests map
         //this.requests.put(currentNonce, request);

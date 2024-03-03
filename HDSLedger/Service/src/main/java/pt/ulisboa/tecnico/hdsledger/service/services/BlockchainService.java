@@ -62,14 +62,14 @@ public class BlockchainService implements UDPService {
                                     clientsLink.send(message.getSenderId(), new Message(selfConfig.getId(), Message.Type.PING));
                                 }
                             }
-                        });
+                        }).start();
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     } catch (ClassNotFoundException e) {
                         throw new RuntimeException(e);
                     }
                 }
-            });
+            }).start();
         } catch (Exception e) {
             e.printStackTrace();
         }

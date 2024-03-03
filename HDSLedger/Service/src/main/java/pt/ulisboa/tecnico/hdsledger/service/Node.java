@@ -56,9 +56,8 @@ public class Node {
                     nodeService
             );
 
-            nodeService.listen();
             blockchainService.listen();
-            System.out.println("listening all");
+            nodeService.listen();
 
         } catch (Exception e) {
             e.printStackTrace();

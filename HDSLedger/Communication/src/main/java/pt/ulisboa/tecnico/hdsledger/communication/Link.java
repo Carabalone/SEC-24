@@ -51,6 +51,11 @@ public class Link {
         Arrays.stream(nodes).forEach(node -> {
             String id = node.getId();
             this.nodes.put(id, node);
+            System.out.println("Creating link 👇");
+            System.out.println("\tNode ID: " + id);
+            System.out.println("\tNode Hostname: " + node.getHostname());
+            System.out.println("\tNode Port: " + node.getPort());
+            System.out.println("\tNode is " + (Integer.parseInt(node.getId()) >= 10 ? "client" : "node"));
             receivedMessages.put(id, new CollapsingSet());
 
         });
@@ -192,6 +197,12 @@ public class Link {
         Boolean local = false;
         SignedMessage responseData = null;
         DatagramPacket response = null;
+
+        System.out.println("Class: " + this.messageClass.getName());
+        System.out.println("Is listening to: ");
+        nodes.values().forEach(node -> {
+            System.out.println((Integer.parseInt(node.getId()) >= 10 ? "client" : "node") + " id: " + node.getId());
+        });
 
         if (this.localhostQueue.size() > 0) {
             message = this.localhostQueue.poll();
