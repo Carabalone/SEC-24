@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
+import javax.sound.midi.Soundbank;
 import java.io.IOException;
 import java.security.PublicKey;
 import java.text.MessageFormat;
@@ -17,12 +18,8 @@ public class Library {
 
     private static final CustomLogger LOGGER = new CustomLogger(Library.class.getName());
 
-    // Client configs
-    private final ProcessConfig[] clientConfigs;
     // Nodes configs
     private final ProcessConfig[] nodeConfigs;
-    // All configs (client + nodes)
-    private final ProcessConfig[] allConfigs;
     // Client identifier (self)
     private final ProcessConfig config;
 
@@ -39,20 +36,14 @@ public class Library {
     private final List<String> blockchain = new ArrayList<>();
 
 
-    public Library(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs, ProcessConfig[] clientConfigs) {
-        this(clientConfig, nodeConfigs, clientConfigs, true);
+    public Library(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs) {
+        this(clientConfig, nodeConfigs, true);
     }
 
-    public Library(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs, ProcessConfig[] clientConfigs,
-                   boolean activateLogs) throws HDSSException {
+    public Library(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs, boolean activateLogs) throws HDSSException {
 
         this.config = clientConfig;
         this.nodeConfigs = nodeConfigs;
-        this.clientConfigs = clientConfigs;
-
-        this.allConfigs = new ProcessConfig[nodeConfigs.length + clientConfigs.length];
-        System.arraycopy(nodeConfigs, 0, this.allConfigs, 0, nodeConfigs.length);
-        System.arraycopy(clientConfigs, 0, this.allConfigs, nodeConfigs.length, clientConfigs.length);
 
         // Create link to communicate with nodes
         System.out.println("[LIBRARY] creating link");
@@ -70,7 +61,7 @@ public class Library {
             throw new HDSSException(ErrorMessage.UnableToSignMessage);
         }
 
-        LedgerRequest request = new LedgerRequest(this.config.getId(), Message.Type.REQUEST, value, signature);
+        LedgerRequest request = new LedgerRequest(Message.Type.REQUEST, this.config.getId(), clientRequestId, value, this.blockchain.size());
         request.setClientSignature(signature);
         this.link.broadcast(request);
         LedgerResponse ledgerResponse;
@@ -96,54 +87,6 @@ public class Library {
         link.broadcast(new Message(config.getId(), Message.Type.PING));
     }
 
-    /*
-     * Find id by public key
-     *
-     * @param publicKey Public key
-     */
-    private String findIdByPublicKey(PublicKey publicKey) {
-        for (ProcessConfig config : this.allConfigs) {
-            try {
-                PublicKey accountPubKey = DigitalSignature.readPublicKey(config.getPublicKeyPath());
-                if (accountPubKey.equals(publicKey)) {
-                    return config.getId();
-                }
-            } catch (Exception e) {
-                throw new HDSSException(ErrorMessage.FailedToReadPublicKey);
-            }
-        }
-        return null;
-    }
-
-    /*
-     * Log request response to console
-     *
-     * @param request Request
-     *
-     * @param response Response
-     *
-     * @param isSuccessful True if the request was successful
-     */
-    private void logRequestResponse(LedgerRequest request, LedgerResponse response, boolean isSuccessful,
-                                    boolean isValid) {
-        switch (request.getType()) {
-            case APPEND -> System.out.printf("TODO: LOGGAR ISSO AQUI");
-
-            case PING -> System.out.println("Received pong from" + request.getSenderId());
-
-            default ->
-                LOGGER.log(Level.INFO, MessageFormat.format(
-                        "{0} - Unknown request type {1}",
-                        config.getId(), request.getType()));
-        }
-    }
-
-    /*
-     * Verify if the signatures within a LedgerResponse are all valid and have the
-     * minimum size of the small quorum
-     *
-     * @param response LedgerResponse to verify
-     */
 
     /*
     *  this listen to responses from the blockchain, not from the client
@@ -161,9 +104,12 @@ public class Library {
                                 LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received ACK {1} message from {2}",
                                         config.getId(), message.getMessageId(), message.getSenderId()));
 
-                            case REPLY ->
+                            case REPLY -> {
                                 LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received REPLY message from {1}",
                                         config.getId(), message.getSenderId()));
+
+                                LOGGER.log(Level.INFO, MessageFormat.format("Message content: {0}", message.getSenderId(), message.getType()));
+                            }
 
                             default -> throw new HDSSException(ErrorMessage.CannotParseMessage);
                         }

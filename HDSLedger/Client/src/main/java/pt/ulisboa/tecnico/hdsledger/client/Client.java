@@ -11,14 +11,10 @@ public class Client {
     private static final String nodePath = "../Service/src/main/resources/";
     private static final String clientPath = "src/main/resources/";
 
-
-    public Client() {
-    }
-
     private static void help() {
-        System.out.println("List of commands: ");
-        System.out.println("ping");
-        System.out.println("append <string_to_append>");
+        System.out.println("Welcome to the Serenity Ledger");
+        System.out.println("Type 'append <value>' to append a string to the blockchain.");
+        System.out.println("Type 'ping' to ping all nodes.");
     }
 
     public static final void main(String[] args) throws HDSSException {
@@ -43,7 +39,7 @@ public class Client {
             Client.help();
 
             // Library to interact with the blockchain
-            final Library library = new Library(config.get(), nodes, clients, false);
+            final Library library = new Library(config.get(), nodes, false);
             library.listen();
 
             while (true) {

@@ -1,15 +1,13 @@
 package pt.ulisboa.tecnico.hdsledger.service.services;
 
-import pt.ulisboa.tecnico.hdsledger.communication.BlockchainAppendRequest;
+import pt.ulisboa.tecnico.hdsledger.communication.LedgerRequest;
 import pt.ulisboa.tecnico.hdsledger.communication.Link;
 import pt.ulisboa.tecnico.hdsledger.communication.Message;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.text.MessageFormat;
-import java.util.ArrayList;
 import java.util.logging.Level;
 
 public class BlockchainService implements UDPService {
@@ -40,6 +38,10 @@ public class BlockchainService implements UDPService {
 
     }
 
+    public void append(LedgerRequest message) {
+        this.nodeService.append(message);
+    }
+
     // this is blocking
     // receive library requests and does consensus stuff
     @Override
@@ -56,15 +58,15 @@ public class BlockchainService implements UDPService {
 
                                 case APPEND -> {
                                     LOGGER.log(Level.INFO, MessageFormat.format("{0} - BLOCKCHAIN SERVICE: Received append request from {1}",
-                                            selfConfig.getId(), message.getSenderId());
-                                    nodeService.append((BlockchainAppendRequest) message);
+                                            selfConfig.getId(), message.getSenderId()));
+                                    append((LedgerRequest) message);
                                 }
 
                                 case PING -> {
                                     LOGGER.log(Level.INFO, MessageFormat.format("{0} - BLOCKCHAIN SERVICE: Received ping request from {1}",
-                                            selfConfig.getId(), message.getSenderId());
-                                    nodeService.ping();
-                                    clientsLink.send(message.getSenderId(), new Message(selfConfig.getId(), Message.Type.PING));
+                                            selfConfig.getId(), message.getSenderId()));
+                                    //nodeService.ping();
+                                    //clientsLink.send(message.getSenderId(), new Message(selfConfig.getId(), Message.Type.PING));
                                 }
                             }
                         }).start();

@@ -2,23 +2,28 @@ package pt.ulisboa.tecnico.hdsledger.communication;
 
 public class LedgerRequest extends Message {
 
-    // Serialized request
-    private String message;
-    // Signature of amount with client's private key
+    // Message identifier
+    private int requestId;
+    // Stored blockchain size
+    private int knownBlockchainSize;
+    // Value to append to the blockchain
+    private String value;
+    // Signature of value with client's private key
     private String clientSignature;
 
-    public LedgerRequest(String senderId, Type type, String message, String signature) {
+    public LedgerRequest(Type type, String senderId, int requestId, String value, int knownBlockchainSize) {
         super(senderId, type);
-        this.message = message;
-        this.clientSignature = signature;
+        this.value = value;
+        this.requestId = requestId;
+        this.knownBlockchainSize = knownBlockchainSize;
     }
 
-    public String getMessage() {
-        return message;
+    public String getValue() {
+        return value;
     }
 
-    public void setMessage(String message) {
-        this.message = message;
+    public void setValue(String value) {
+        this.value = value;
     }
 
     public String getClientSignature() {
@@ -29,26 +34,19 @@ public class LedgerRequest extends Message {
         this.clientSignature = clientSignature;
     }
 
-    @Override
-    public String toString() {
-        return "LedgerRequest [message=" + message + ", clientSignature=" + clientSignature + ", getSenderId()="
-                + getSenderId() + ", getType()=" + getType() + ", getMessageId()=" + getMessageId() + "]";
+    public int getRequestId() {
+        return requestId;
     }
 
-    @Override
-    public boolean equals(Object o){
-        if (o == this) return true;
-        if (!(o instanceof LedgerRequest)) {
-            return false;
-        }
-        LedgerRequest request = (LedgerRequest) o;
-        return request.getMessage().equals(message) && request.getClientSignature().equals(clientSignature) &&
-                request.getSenderId().equals(getSenderId()) && request.getType().equals(getType()) &&
-                request.getMessageId() == getMessageId();
+    public void setRequestId(int requestId) {
+        this.requestId = requestId;
     }
 
-    @Override
-    public int hashCode() {
-        return toString().hashCode();
+    public int getKnownBlockchainSize() {
+        return knownBlockchainSize;
+    }
+
+    public void setKnownBlockchainSize(int knownBlockchainSize) {
+        this.knownBlockchainSize = knownBlockchainSize;
     }
 }

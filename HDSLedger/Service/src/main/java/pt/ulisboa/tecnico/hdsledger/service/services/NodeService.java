@@ -2,10 +2,7 @@ package pt.ulisboa.tecnico.hdsledger.service.services;
 
 import java.io.IOException;
 import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -29,7 +26,9 @@ public class NodeService implements UDPService {
     private final ProcessConfig leaderConfig;
 
     // Link to communicate with nodes
-    private final Link link;
+    private final Link nodesLink;
+
+    private final Link clientsLink;
 
     // Consensus instance -> Round -> List of prepare messages
     private final MessageBucket prepareMessages;
@@ -48,10 +47,11 @@ public class NodeService implements UDPService {
     // Ledger (for now, just a list of strings)
     private ArrayList<String> ledger = new ArrayList<String>();
 
-    public NodeService(Link link, ProcessConfig config,
-            ProcessConfig leaderConfig, ProcessConfig[] nodesConfig) {
+    public NodeService(Link nodesLink, Link clientsLink,
+                       ProcessConfig config, ProcessConfig leaderConfig, ProcessConfig[] nodesConfig) {
 
-        this.link = link;
+        this.nodesLink = nodesLink;
+        this.clientsLink = clientsLink;
         this.config = config;
         this.leaderConfig = leaderConfig;
         this.nodesConfig = nodesConfig;
@@ -123,7 +123,7 @@ public class NodeService implements UDPService {
             InstanceInfo instance = this.instanceInfo.get(localConsensusInstance);
             LOGGER.log(Level.INFO,
                 MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
-            this.link.broadcast(this.createConsensusMessage(value, localConsensusInstance, instance.getCurrentRound()));
+            this.nodesLink.broadcast(this.createConsensusMessage(value, localConsensusInstance, instance.getCurrentRound()));
         } else {
             LOGGER.log(Level.INFO,
                     MessageFormat.format("{0} - Node is not leader, waiting for PRE-PREPARE message", config.getId()));
@@ -180,7 +180,7 @@ public class NodeService implements UDPService {
                 .setReplyToMessageId(senderMessageId)
                 .build();
 
-        this.link.broadcast(consensusMessage);
+        this.nodesLink.broadcast(consensusMessage);
     }
 
     /*
@@ -229,7 +229,7 @@ public class NodeService implements UDPService {
                     .setMessage(instance.getCommitMessage().toJson())
                     .build();
 
-            link.send(senderId, m);
+            nodesLink.send(senderId, m);
             return;
         }
 
@@ -255,7 +255,7 @@ public class NodeService implements UDPService {
                         .setMessage(c.toJson())
                         .build();
 
-                link.send(senderMessage.getSenderId(), m);
+                nodesLink.send(senderMessage.getSenderId(), m);
             });
         }
     }
@@ -334,9 +334,13 @@ public class NodeService implements UDPService {
         }
     }
 
-    public void append(BlockchainAppendRequest request) {
+    public void append(LedgerRequest request) {
         System.out.print("got append request from blockchain service: ");
-        System.out.println(request.getString());
+        ledger.add(request.getValue());
+
+        LedgerResponse response = new LedgerResponse(this.getConfig().getId(), request.getRequestId(), ledger);
+        response.setType(Message.Type.REPLY);
+        clientsLink.send(request.getSenderId(), response);
     }
 
     public void ping() {
@@ -350,24 +354,18 @@ public class NodeService implements UDPService {
             new Thread(() -> {
                 try {
                     while (true) {
-                        Message message = link.receive();
+                        Message message = nodesLink.receive();
 
                         // Separate thread to handle each message
                         new Thread(() -> {
 
                             switch (message.getType()) {
 
-                                case PRE_PREPARE ->
-                                    uponPrePrepare((ConsensusMessage) message);
+                                case PRE_PREPARE ->uponPrePrepare((ConsensusMessage) message);
 
+                                case PREPARE -> uponPrepare((ConsensusMessage) message);
 
-                                case PREPARE ->
-                                    uponPrepare((ConsensusMessage) message);
-
-
-                                case COMMIT ->
-                                    uponCommit((ConsensusMessage) message);
-
+                                case COMMIT -> uponCommit((ConsensusMessage) message);
 
                                 case ACK ->
                                     LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received ACK message from {1}",
@@ -382,9 +380,7 @@ public class NodeService implements UDPService {
                                     LOGGER.log(Level.INFO,
                                             MessageFormat.format("{0} - Received unknown message from {1}",
                                                     config.getId(), message.getSenderId()));
-
                             }
-
                         }).start();
                     }
                 } catch (IOException | ClassNotFoundException e) {
@@ -395,5 +391,4 @@ public class NodeService implements UDPService {
             e.printStackTrace();
         }
     }
-
 }

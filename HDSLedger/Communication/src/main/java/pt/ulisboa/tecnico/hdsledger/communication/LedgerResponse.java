@@ -1,28 +1,26 @@
 package pt.ulisboa.tecnico.hdsledger.communication;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class LedgerResponse extends Message {
 
     // Consensus instance when value was decided
     private int consensusInstance;
-    // Message Identifier
-    private int requestId;
     // New blockchain values
-    private List<String> values;
+    private ArrayList<String> values;
 
-    public LedgerResponse(String senderId, int requestId, int consensusInstance, List<String> values) {
+    public LedgerResponse(String senderId, int consensusInstance, ArrayList<String> values) {
         super(senderId, Type.REPLY);
-        this.requestId = requestId;
         this.consensusInstance = consensusInstance;
         this.values = values;
     }
 
-    public List<String> getValues() {
+    public ArrayList<String> getValues() {
         return values;
     }
 
-    public void setValues(List<String> values) {
+    public void setValues(ArrayList<String> values) {
         this.values = values;
     }
 
@@ -32,13 +30,5 @@ public class LedgerResponse extends Message {
 
     public void setConsensusInstance(int consensusInstance) {
         this.consensusInstance = consensusInstance;
-    }
-
-    public int getRequestId(){
-        return requestId;
-    }
-
-    public void setRequestId(int requestId) {
-        this.requestId = requestId;
     }
 }

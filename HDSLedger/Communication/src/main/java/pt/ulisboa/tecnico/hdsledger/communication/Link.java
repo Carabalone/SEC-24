@@ -224,7 +224,7 @@ public class Link {
 
             System.out.println("Sender ID: " + message.getSenderId());
 
-            if (!DigitalSignature.verifySignature(responseData.getMessage(), responseData.getSignature(),
+/*            if (!DigitalSignature.verifySignature(responseData.getMessage(), responseData.getSignature(),
                     nodes.get(message.getSenderId()).getPublicKeyPath())) {
 
                 message.setType(Message.Type.IGNORE);
@@ -233,7 +233,7 @@ public class Link {
                         InetAddress.getByName(response.getAddress().getHostName()), response.getPort()));
 
                 return message;
-            }
+            }*/
         }
 
         String senderId = message.getSenderId();

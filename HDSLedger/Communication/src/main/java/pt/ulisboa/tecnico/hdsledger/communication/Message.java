@@ -11,14 +11,10 @@ public class Message implements Serializable {
     // Message type
     private Type type;
 
-    private String b64DigitalSignature;
-
     public enum Type {
-        APPEND,
+        APPEND, PING,
         PRE_PREPARE, PREPARE, COMMIT, ACK, IGNORE,
-        REPLY,
-        PING,
-        REQUEST;
+        REPLY, REQUEST;
     }
 
     public Message(String senderId, Type type) {
@@ -48,9 +44,5 @@ public class Message implements Serializable {
 
     public void setType(Type type) {
         this.type = type;
-    }
-
-    public void authenticate() {
-
     }
 }

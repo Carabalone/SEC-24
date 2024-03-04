@@ -46,16 +46,10 @@ public class Node {
                     LedgerRequest.class);
 
             // Services that implement listen from UDPService
-            NodeService nodeService = new NodeService(linkToNodes, nodeConfig, leaderConfig,
-                    nodeConfigs);
+            NodeService nodeService = new NodeService(linkToNodes, linkToClients, nodeConfig, leaderConfig, nodeConfigs);
 
-            BlockchainService blockchainService = new BlockchainService(
-                    linkToNodes,
-                    linkToClients,
-                    nodeConfig,
-                    nodeConfigs,
-                    clientConfigs,
-                    nodeService
+            BlockchainService blockchainService = new BlockchainService(linkToNodes, linkToClients,
+                    nodeConfig, nodeConfigs, clientConfigs, nodeService
             );
 
             blockchainService.listen();
