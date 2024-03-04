@@ -75,9 +75,7 @@ public class Client {
                         library.ping();
                     }
 
-                    default -> {
-                        System.out.println("unrecognized command");
-                    }
+                    default -> System.out.println("unrecognized command");
                 }
             }
         } catch (Exception e) {

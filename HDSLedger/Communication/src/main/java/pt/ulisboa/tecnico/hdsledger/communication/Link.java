@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.communication.Message.Type;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
+import javax.sound.midi.Soundbank;
 import java.io.IOException;
 import java.net.*;
 import java.text.MessageFormat;
@@ -211,12 +212,6 @@ public class Link {
         SignedMessage responseData = null;
         DatagramPacket response = null;
 
-        System.out.println("Class: " + this.messageClass.getName());
-        System.out.println("Is listening to: ");
-        nodes.values().forEach(node -> {
-            System.out.println((Integer.parseInt(node.getId()) >= 10 ? "client" : "node") + " id: " + node.getId());
-        });
-
         if (this.localhostQueue.size() > 0) {
             message = this.localhostQueue.poll();
             local = true;
@@ -234,10 +229,11 @@ public class Link {
             message = new Gson().fromJson(responseData.getMessage(), Message.class);
 
             // Verify signature
-
             System.out.println("Sender ID: " + message.getSenderId());
+            System.out.println("Signature: " + responseData.getSignature());
+            System.out.println("LINK: Signature bytes: " + Base64.getDecoder().decode(responseData.getSignature()));
 
-/*            if (!DigitalSignature.verifySignature(responseData.getMessage(), responseData.getSignature(),
+            if (!DigitalSignature.verifySignature(responseData.getMessage(), responseData.getSignature(),
                     nodes.get(message.getSenderId()).getPublicKeyPath())) {
 
                 message.setType(Message.Type.IGNORE);
@@ -246,7 +242,7 @@ public class Link {
                         InetAddress.getByName(response.getAddress().getHostName()), response.getPort()));
 
                 return message;
-            }*/
+            }
         }
 
         String senderId = message.getSenderId();

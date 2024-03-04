@@ -24,8 +24,8 @@ def generate_key_pairs(name, num_pairs):
         )
 
         public_key = key.public_key().public_bytes(
-            crypto_serialization.Encoding.OpenSSH,
-            crypto_serialization.PublicFormat.OpenSSH
+            crypto_serialization.Encoding.PEM,
+            crypto_serialization.PublicFormat.SubjectPublicKeyInfo
         )
 
         # Save key pair to files

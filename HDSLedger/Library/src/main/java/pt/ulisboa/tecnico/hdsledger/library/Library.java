@@ -54,18 +54,18 @@ public class Library {
     public List<String> append(String value) {
         int clientRequestId = this.requestId.getAndIncrement();
 
-        String signature;
+/*        String signature;
         try {
             signature = DigitalSignature.sign(value, config.getPrivateKeyPath());
         } catch (Exception e) {
             throw new HDSSException(ErrorMessage.UnableToSignMessage);
-        }
+        }*/
 
         LedgerRequest request = new LedgerRequest(Message.Type.REQUEST, this.config.getId(), clientRequestId, value, this.blockchain.size());
-        request.setClientSignature(signature);
+        //request.setClientSignature(signature);
         this.link.broadcast(request);
-        LedgerResponse ledgerResponse;
 
+        LedgerResponse ledgerResponse;
         while ((ledgerResponse = (LedgerResponse) responses.get(clientRequestId)) == null) {
             try {
                 Thread.sleep(1000);
