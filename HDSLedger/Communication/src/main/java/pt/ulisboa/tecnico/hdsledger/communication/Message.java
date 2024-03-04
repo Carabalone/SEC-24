@@ -17,7 +17,8 @@ public class Message implements Serializable {
         APPEND,
         PRE_PREPARE, PREPARE, COMMIT, ACK, IGNORE,
         REPLY,
-        PING;
+        PING,
+        REQUEST;
     }
 
     public Message(String senderId, Type type) {

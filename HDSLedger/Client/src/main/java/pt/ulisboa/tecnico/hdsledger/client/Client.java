@@ -8,8 +8,6 @@ import java.util.Optional;
 import java.util.Scanner;
 
 public class Client {
-    private static final CustomLogger LOGGER = new CustomLogger(Client.class.getName());
-
     private static final String nodePath = "../Service/src/main/resources/";
     private static final String clientPath = "src/main/resources/";
 
@@ -19,14 +17,12 @@ public class Client {
 
     private static void help() {
         System.out.println("List of commands: ");
+        System.out.println("ping");
         System.out.println("append <string_to_append>");
     }
 
     public static final void main(String[] args) throws HDSSException {
         try {
-
-            System.out.println("Working Directory = " + System.getProperty("user.dir"));
-
             String clientId = args[0];
             String configOption = args[1];
 
@@ -43,7 +39,6 @@ public class Client {
             Scanner scanner = new Scanner(System.in);
 
             System.out.println("I'm alive! " + clientId);
-
             System.out.println("You can start pressing commands: ");
             Client.help();
 
@@ -63,18 +58,20 @@ public class Client {
                 String command = terms[0];
 
                 switch (command) {
+
                     case "help" -> {
                         help();
-                        break;
                     }
+
                     case "append" -> {
                         if (terms.length < 2)
                             System.out.println("bad input, usage: append <string_to_append>");
-                        System.out.println("appending " + terms[1]);
+                        System.out.println("appending string to the blockchain" + terms[1]);
                         library.append(terms[1]);
                     }
 
                     case "ping" -> {
+                        System.out.printf("pinging all nodes, my id: %s\n", config.get().getId());
                         library.ping();
                     }
 
@@ -82,7 +79,6 @@ public class Client {
                         System.out.println("unrecognized command");
                     }
                 }
-
             }
         } catch (Exception e) {
             e.printStackTrace();

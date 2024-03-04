@@ -55,9 +55,8 @@ public class Link {
             System.out.println("\tNode ID: " + id);
             System.out.println("\tNode Hostname: " + node.getHostname());
             System.out.println("\tNode Port: " + node.getPort());
-            System.out.println("\tNode is " + (Integer.parseInt(node.getId()) >= 10 ? "client" : "node"));
+            System.out.println("\tNode is " + (Integer.parseInt(id) >= 10 ? "client" : "node"));
             receivedMessages.put(id, new CollapsingSet());
-
         });
 
         try {
@@ -65,6 +64,7 @@ public class Link {
         } catch (UnknownHostException | SocketException e) {
             throw new HDSSException(ErrorMessage.CannotOpenSocket);
         }
+
         if (!activateLogs) {
             LogManager.getLogManager().reset();
         }
@@ -208,7 +208,9 @@ public class Link {
             message = this.localhostQueue.poll();
             local = true;
             this.receivedAcks.add(message.getMessageId());
-        } else {
+        }
+
+        else {
             byte[] buf = new byte[65535];
             response = new DatagramPacket(buf, buf.length);
 
@@ -220,9 +222,6 @@ public class Link {
 
             // Verify signature
 
-            nodes.values().forEach(node -> {
-                System.out.println("id: " + node.getId());
-            });
             System.out.println("Sender ID: " + message.getSenderId());
 
             if (!DigitalSignature.verifySignature(responseData.getMessage(), responseData.getSignature(),

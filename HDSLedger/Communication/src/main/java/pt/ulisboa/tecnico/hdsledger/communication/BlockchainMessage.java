@@ -1,7 +1,5 @@
 package pt.ulisboa.tecnico.hdsledger.communication;
 
-import com.google.gson.Gson;
-
 public class BlockchainMessage extends Message {
     private String message;
 

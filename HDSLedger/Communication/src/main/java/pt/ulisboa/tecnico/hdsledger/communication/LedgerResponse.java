@@ -1,63 +1,44 @@
 package pt.ulisboa.tecnico.hdsledger.communication;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-
-import com.google.gson.Gson;
 
 public class LedgerResponse extends Message {
 
-    // True if the prepared block is valid
-    private boolean successful;
-    // Signatures of the account update
-    private Map<String, String> signatures;
-    // Replying to nonces (only for new READ operations)
-    private Integer nonce = null;
-    // Set of message ids this is replying to (for ACKs)
-    private List<Integer> repliesTo = new ArrayList<>();
+    // Consensus instance when value was decided
+    private int consensusInstance;
+    // Message Identifier
+    private int requestId;
+    // New blockchain values
+    private List<String> values;
 
-    public LedgerResponse(String senderId, boolean successful) {
+    public LedgerResponse(String senderId, int requestId, int consensusInstance, List<String> values) {
         super(senderId, Type.REPLY);
-        this.successful = successful;
+        this.requestId = requestId;
+        this.consensusInstance = consensusInstance;
+        this.values = values;
     }
 
-    public LedgerResponse(String senderId, boolean successful, Map<String, String> signatures) {
-        this(senderId, successful);
-        this.signatures = signatures;
+    public List<String> getValues() {
+        return values;
     }
 
-    public LedgerResponse(String senderId, boolean successful, Map<String, String> signatures, int nonce) {
-        this(senderId, successful, signatures);
-        this.nonce = nonce;
+    public void setValues(List<String> values) {
+        this.values = values;
     }
 
-    public boolean isSuccessful() {
-        return successful;
+    public int getConsensusInstance() {
+        return consensusInstance;
     }
 
-    public Map<String, String> getSignatures() {
-        return signatures;
+    public void setConsensusInstance(int consensusInstance) {
+        this.consensusInstance = consensusInstance;
     }
 
-    public List<Integer> getRepliesTo() {
-        return repliesTo;
+    public int getRequestId(){
+        return requestId;
     }
 
-    public void setRepliesTo(List<Integer> repliesTo) {
-        this.repliesTo = repliesTo;
+    public void setRequestId(int requestId) {
+        this.requestId = requestId;
     }
-
-    public void addReplyTo(int replyTo) {
-        this.repliesTo.add(replyTo);
-    }
-
-    public Integer getNonce() {
-        return nonce;
-    }
-
-    public String toJson() {
-        return new Gson().toJson(this);
-    }
-
 }

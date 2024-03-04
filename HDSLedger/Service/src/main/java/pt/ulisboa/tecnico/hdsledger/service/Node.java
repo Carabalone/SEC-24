@@ -50,9 +50,11 @@ public class Node {
                     nodeConfigs);
 
             BlockchainService blockchainService = new BlockchainService(
-                    linkToNodes, linkToClients,
+                    linkToNodes,
+                    linkToClients,
                     nodeConfig,
-                    nodeConfigs, clientConfigs,
+                    nodeConfigs,
+                    clientConfigs,
                     nodeService
             );
 

@@ -10,6 +10,7 @@ import java.security.PublicKey;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 
 public class Library {
@@ -33,6 +34,10 @@ public class Library {
     // Messages sent by the client {nonce -> request}
     private final Map<Integer, LedgerRequest> requests = new ConcurrentHashMap<>();
 
+    private AtomicInteger requestId = new AtomicInteger(0);
+
+    private final List<String> blockchain = new ArrayList<>();
+
 
     public Library(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs, ProcessConfig[] clientConfigs) {
         this(clientConfig, nodeConfigs, clientConfigs, true);
@@ -41,9 +46,9 @@ public class Library {
     public Library(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs, ProcessConfig[] clientConfigs,
                    boolean activateLogs) throws HDSSException {
 
+        this.config = clientConfig;
         this.nodeConfigs = nodeConfigs;
         this.clientConfigs = clientConfigs;
-        this.config = clientConfig;
 
         this.allConfigs = new ProcessConfig[nodeConfigs.length + clientConfigs.length];
         System.arraycopy(nodeConfigs, 0, this.allConfigs, 0, nodeConfigs.length);
@@ -55,37 +60,35 @@ public class Library {
                 activateLogs, 5000);
     }
 
-    /*
-     * Creates a new account in the ledger
-     * The request is not blocking and the response is received asynchronously
-     * The request will be sent to a small quorum of nodes that includes the leader
-     * and will wait for a single response
-     */
-    public void append(String stringToAppend) {
-        PublicKey accountPubKey;
-        try {
-            accountPubKey = DigitalSignature.readPublicKey(this.config.getPublicKeyPath());
-        } catch (Exception e) {
-            throw new HDSSException(ErrorMessage.FailedToReadPublicKey);
-        }
+    public List<String> append(String value) {
+        int clientRequestId = this.requestId.getAndIncrement();
 
-        // Each LedgerRequest receives a specific ledger request which is serialized and
-        // signed
-        /*BlockchainAppendRequest requestCreate = new BlockchainAppendRequest(accountPubKey, stringToAppend, config.getId());
-        String serializedCreateRequest = new Gson().toJson(requestCreate);
         String signature;
         try {
-            signature = DigitalSignature.sign(serializedCreateRequest, config.getPrivateKeyPath());
+            signature = DigitalSignature.sign(value, config.getPrivateKeyPath());
         } catch (Exception e) {
             throw new HDSSException(ErrorMessage.UnableToSignMessage);
         }
 
-        // Send generic ledger request
-        LedgerRequest request = new LedgerRequest(this.config.getId(), Message.Type.APPEND, serializedCreateRequest,
-                signature);*/
+        LedgerRequest request = new LedgerRequest(this.config.getId(), Message.Type.REQUEST, value, signature);
+        request.setClientSignature(signature);
+        this.link.broadcast(request);
+        LedgerResponse ledgerResponse;
 
-        // Add to pending requests map
-        //this.requests.put(currentNonce, request);
+        while ((ledgerResponse = (LedgerResponse) responses.get(clientRequestId)) == null) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        // Add new values to the blockchain
+        List<String> blockchainValues = ledgerResponse.getValues();
+        blockchain.addAll(ledgerResponse.getValues().stream().toList());
+
+        responses.remove(clientRequestId);
+        return blockchainValues;
     }
 
     public void ping() {
@@ -124,19 +127,14 @@ public class Library {
     private void logRequestResponse(LedgerRequest request, LedgerResponse response, boolean isSuccessful,
                                     boolean isValid) {
         switch (request.getType()) {
-            case APPEND -> {
-                System.out.printf("TODO: LOGGAR ISSO AQUI");
-            }
+            case APPEND -> System.out.printf("TODO: LOGGAR ISSO AQUI");
 
-            case PING -> {
-                System.out.println("Received pong from" + request.getSenderId());
-            }
+            case PING -> System.out.println("Received pong from" + request.getSenderId());
 
-            default -> {
+            default ->
                 LOGGER.log(Level.INFO, MessageFormat.format(
                         "{0} - Unknown request type {1}",
                         config.getId(), request.getType()));
-            }
         }
     }
 
@@ -153,46 +151,26 @@ public class Library {
 
     public void listen() {
         try {
-            // Thread to listen on every request
             new Thread(() -> {
                 try {
                     while (true) {
-
-                        // Receive message from nodes
                         Message message = link.receive();
 
                         switch (message.getType()) {
-                            case ACK -> {
+                            case ACK ->
                                 LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received ACK {1} message from {2}",
                                         config.getId(), message.getMessageId(), message.getSenderId()));
-                                continue;
-                            }
-                            case IGNORE -> {
-                                LOGGER.log(Level.INFO,
-                                        MessageFormat.format("{0} - Received IGNORE {1} message from {2}",
-                                                config.getId(), message.getMessageId(), message.getSenderId()));
-                                continue;
-                            }
-                            case REPLY -> {
+
+                            case REPLY ->
                                 LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received REPLY message from {1}",
                                         config.getId(), message.getSenderId()));
-                            }
-                            case PING -> {
-                                LOGGER.log(Level.INFO, MessageFormat.format("{0} - Receved PING msg from {1}", config.getId(), message.getSenderId()));
-                                System.out.println("Received ping from: " + message.getSenderId());
-                            }
-                            default -> {
-                                throw new HDSSException(ErrorMessage.CannotParseMessage);
-                            }
-                        }
 
-                        LedgerResponse response = (LedgerResponse) message;
+                            default -> throw new HDSSException(ErrorMessage.CannotParseMessage);
+                        }
                     }
-                } catch (HDSSException e) {
-                    e.printStackTrace();
-                    LOGGER.log(Level.INFO,
-                            MessageFormat.format("{0} - EXCEPTION: {1}", config.getId(), e.getMessage()));
-                } catch (IOException | ClassNotFoundException e) {
+                }
+
+                catch (IOException | ClassNotFoundException e) {
                     e.printStackTrace();
                 }
             }).start();
@@ -200,5 +178,4 @@ public class Library {
             e.printStackTrace();
         }
     }
-
 }
