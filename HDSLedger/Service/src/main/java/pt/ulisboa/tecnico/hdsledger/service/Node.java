@@ -53,7 +53,7 @@ public class Node {
             );
 
             blockchainService.listen();
-            nodeService.listen();
+            //nodeService.listen();
 
         } catch (Exception e) {
             e.printStackTrace();

@@ -38,6 +38,10 @@ public class Client {
             System.out.println("You can start pressing commands: ");
             Client.help();
 
+            Arrays.stream(nodes).forEach(n -> {
+
+            });
+
             // Library to interact with the blockchain
             final Library library = new Library(config.get(), nodes, false);
             library.listen();

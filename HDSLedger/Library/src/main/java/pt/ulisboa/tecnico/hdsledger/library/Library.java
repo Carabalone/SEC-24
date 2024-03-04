@@ -48,7 +48,7 @@ public class Library {
         // Create link to communicate with nodes
         System.out.println("[LIBRARY] creating link");
         this.link = new Link(clientConfig, clientConfig.getPort(), nodeConfigs, LedgerResponse.class,
-                activateLogs, 5000);
+                activateLogs, 5000, true);
     }
 
     public List<String> append(String value) {

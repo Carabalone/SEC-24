@@ -37,16 +37,29 @@ public class Link {
     // Send messages to self by pushing to queue instead of through the network
     private final Queue<Message> localhostQueue = new ConcurrentLinkedQueue<>();
 
+    private final boolean isClient;
+
     public Link(ProcessConfig self, int port, ProcessConfig[] nodes, Class<? extends Message> messageClass) {
-        this(self, port, nodes, messageClass, false, 200);
+        this(self, port, nodes, messageClass, false, 200, false);
+    }
+
+   public Link(ProcessConfig self, int port, ProcessConfig[] nodes, Class<? extends Message> messageClass,
+            boolean activateLogs, int baseSleepTime) {
+        this(self, port, nodes, messageClass, activateLogs, baseSleepTime, false);
     }
 
     public Link(ProcessConfig self, int port, ProcessConfig[] nodes, Class<? extends Message> messageClass,
-            boolean activateLogs, int baseSleepTime) {
+                boolean isClient) {
+        this(self, port, nodes, messageClass, false, 200, isClient);
+    }
+
+    public Link(ProcessConfig self, int port, ProcessConfig[] nodes, Class<? extends Message> messageClass,
+            boolean activateLogs, int baseSleepTime, boolean isClient) {
 
         this.config = self;
         this.messageClass = messageClass;
         this.BASE_SLEEP_TIME = baseSleepTime;
+        this.isClient = isClient;
 
         Arrays.stream(nodes).forEach(node -> {
             String id = node.getId();
@@ -54,7 +67,7 @@ public class Link {
             System.out.println("Creating link 👇");
             System.out.println("\tNode ID: " + id);
             System.out.println("\tNode Hostname: " + node.getHostname());
-            System.out.println("\tNode Port: " + node.getPort());
+            System.out.println("\tNode Port: " + (isClient ? node.getClientPort() : node.getPort()));
             System.out.println("\tNode is " + (Integer.parseInt(id) >= 10 ? "client" : "node"));
             receivedMessages.put(id, new CollapsingSet());
         });
@@ -108,7 +121,7 @@ public class Link {
 
                 // If the message is not ACK, it will be resent
                 InetAddress destAddress = InetAddress.getByName(node.getHostname());
-                int destPort = node.getPort();
+                int destPort = isClient ? node.getClientPort() : node.getPort();
                 int count = 1;
                 int messageId = data.getMessageId();
                 int sleepTime = BASE_SLEEP_TIME;

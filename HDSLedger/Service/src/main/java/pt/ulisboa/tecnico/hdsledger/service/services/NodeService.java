@@ -356,6 +356,8 @@ public class NodeService implements UDPService {
                     while (true) {
                         Message message = nodesLink.receive();
 
+                        System.out.println("Node Service Received message: " + message.getType() + " from " + message.getSenderId());
+
                         // Separate thread to handle each message
                         new Thread(() -> {
 

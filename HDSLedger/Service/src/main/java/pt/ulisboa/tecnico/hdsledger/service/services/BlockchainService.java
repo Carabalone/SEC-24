@@ -53,6 +53,8 @@ public class BlockchainService implements UDPService {
                         // receba
                         Message message = clientsLink.receive();
 
+                        System.out.println("Blockchain Service Received message: " + message.getType() + " from " + message.getSenderId());
+
                         new Thread(() -> {
                             switch (message.getType())  {
 
