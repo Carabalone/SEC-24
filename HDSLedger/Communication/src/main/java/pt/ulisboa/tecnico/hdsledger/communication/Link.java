@@ -230,8 +230,6 @@ public class Link {
 
             // Verify signature
             System.out.println("Sender ID: " + message.getSenderId());
-            System.out.println("Signature: " + responseData.getSignature());
-            System.out.println("LINK: Signature bytes: " + Base64.getDecoder().decode(responseData.getSignature()));
 
             if (!DigitalSignature.verifySignature(responseData.getMessage(), responseData.getSignature(),
                     nodes.get(message.getSenderId()).getPublicKeyPath())) {

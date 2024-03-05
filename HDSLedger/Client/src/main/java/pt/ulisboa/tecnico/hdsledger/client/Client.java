@@ -61,6 +61,7 @@ public class Client {
 
                     case "help" -> {
                         help();
+                        break;
                     }
 
                     case "append" -> {
@@ -68,14 +69,19 @@ public class Client {
                             System.out.println("bad input, usage: append <string_to_append>");
                         System.out.println("appending string to the blockchain" + terms[1]);
                         library.append(terms[1]);
+                        break;
                     }
 
                     case "ping" -> {
                         System.out.printf("pinging all nodes, my id: %s\n", config.get().getId());
                         library.ping();
+                        break;
                     }
 
-                    default -> System.out.println("unrecognized command");
+                    default -> {
+                        System.out.println("unrecognized command");
+                        break;
+                    }
                 }
             }
         } catch (Exception e) {

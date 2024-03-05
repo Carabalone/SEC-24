@@ -96,15 +96,10 @@ public class DigitalSignature {
             throws NoSuchAlgorithmException, InvalidKeySpecException, IOException,
             NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
 
-        System.out.println("DECRYPT: ENTROU");
         PublicKey publicKey = readPublicKey(pathToPublicKey);
-        System.out.println("DECRYPT: LEU CHAVE PUBLICA");
         Cipher decryptCipher = Cipher.getInstance("RSA");
-        System.out.println("DECRYPT: INSTANCIOU CIPHER");
         decryptCipher.init(Cipher.DECRYPT_MODE, publicKey);
-        System.out.println("DECRYPT: INICIALIZOU CIPHER");
         byte[] decryptedData = decryptCipher.doFinal(data);
-        System.out.println("DECRYPT: DECRYPTOU");
 
         return decryptedData;
     }
@@ -124,12 +119,8 @@ public class DigitalSignature {
             NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, IOException {
 
         String digest = digest(data);
-        System.out.printf("SIGN: Digest: %s\n", digest);
-
         byte[] digestEncrypted = encrypt(digest.getBytes(), pathToPrivateKey);
-
         String digestBase64 = Base64.getEncoder().encodeToString(digestEncrypted);
-        System.out.printf("SIGN: DigestBase64 / Signature: %s\n", digestBase64);
 
         return digestBase64;
     }
@@ -137,16 +128,8 @@ public class DigitalSignature {
     public static boolean verifySignature(String data, String signature, String pathToPublicKey) {
         try {
             String hash = digest(data);
-            System.out.printf("VERIFY: Hash: %s\n", hash);
-
-            System.out.println("VERIFY: Signature: " + signature);
-            System.out.printf("VERIFY: Signature bytes: %s\n", Base64.getDecoder().decode(signature));
             byte[] signatureBytes = Base64.getDecoder().decode(signature);
-            System.out.println("VERIFY: IDK bytes: " + signatureBytes);
-
-            String decryptedHash = new String(decrypt(Base64.getDecoder().decode(signature), pathToPublicKey));
-            System.out.println("VERIFY: Decrypted Hash: " + decryptedHash);
-            System.out.printf("Hash equals Decrypted Hash: %s\n", hash.equals(decryptedHash));
+            String decryptedHash = new String(decrypt(signatureBytes, pathToPublicKey));
             return hash.equals(decryptedHash);
         } catch (Exception e) {
             return false;

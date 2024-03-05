@@ -39,6 +39,7 @@ public class BlockchainService implements UDPService {
     }
 
     public void append(LedgerRequest message) {
+        System.out.printf("BLOCKCHAIN SERVICE: Received append request from %s\n", message.getSenderId());
         this.nodeService.append(message);
     }
 
@@ -52,8 +53,7 @@ public class BlockchainService implements UDPService {
                     try {
                         // receba
                         Message message = clientsLink.receive();
-
-                        System.out.println("Blockchain Service Received message: " + message.getType() + " from " + message.getSenderId());
+                        System.out.println("BLOCKCHAIN SERVICE: Received message: " + message.getType() + " from " + message.getSenderId());
 
                         new Thread(() -> {
                             switch (message.getType())  {
@@ -61,7 +61,8 @@ public class BlockchainService implements UDPService {
                                 case APPEND -> {
                                     LOGGER.log(Level.INFO, MessageFormat.format("{0} - BLOCKCHAIN SERVICE: Received append request from {1}",
                                             selfConfig.getId(), message.getSenderId()));
-                                    append((LedgerRequest) message);
+                                    System.out.printf("BLOCKCHAIN SERVICE: My Node Service is %s\n", nodeService);
+                                    nodeService.append((LedgerRequest) message);
                                 }
 
                                 case PING -> {
@@ -71,6 +72,7 @@ public class BlockchainService implements UDPService {
                                     //clientsLink.send(message.getSenderId(), new Message(selfConfig.getId(), Message.Type.PING));
                                 }
                             }
+                            System.out.println("BLOCKCHAIN SERVICE: Finished processing message");
                         }).start();
                     } catch (IOException | ClassNotFoundException e) {
                         throw new RuntimeException(e);

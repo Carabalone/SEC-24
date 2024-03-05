@@ -54,15 +54,7 @@ public class Library {
     public List<String> append(String value) {
         int clientRequestId = this.requestId.getAndIncrement();
 
-/*        String signature;
-        try {
-            signature = DigitalSignature.sign(value, config.getPrivateKeyPath());
-        } catch (Exception e) {
-            throw new HDSSException(ErrorMessage.UnableToSignMessage);
-        }*/
-
-        LedgerRequest request = new LedgerRequest(Message.Type.REQUEST, this.config.getId(), clientRequestId, value, this.blockchain.size());
-        //request.setClientSignature(signature);
+        LedgerRequest request = new LedgerRequest(Message.Type.APPEND, this.config.getId(), clientRequestId, value, this.blockchain.size());
         this.link.broadcast(request);
 
         LedgerResponse ledgerResponse;
@@ -109,6 +101,12 @@ public class Library {
                                         config.getId(), message.getSenderId()));
 
                                 LOGGER.log(Level.INFO, MessageFormat.format("Message content: {0}", message.getSenderId(), message.getType()));
+                                if (message instanceof LedgerResponse) {
+                                    LedgerResponse response = (LedgerResponse) message;
+                                    blockchain.add(response.getValues().get(0));
+                                    System.out.printf("LIBRARY: Blockchain: %s\n", blockchain);
+                                    System.out.println("LIBRARY: Added values to the blockhain: " + response.getValues().get(0));
+                                }
                             }
 
                             default -> throw new HDSSException(ErrorMessage.CannotParseMessage);
