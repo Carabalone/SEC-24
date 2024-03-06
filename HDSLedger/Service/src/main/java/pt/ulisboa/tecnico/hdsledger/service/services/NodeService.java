@@ -338,7 +338,7 @@ public class NodeService implements UDPService {
         System.out.print("NODE SERVICE: Got append request from blockchain service: ");
         ledger.add(request.getValue());
 
-        LedgerResponse response = new LedgerResponse(this.getConfig().getId(), request.getRequestId(), ledger);
+        LedgerResponse response = new LedgerResponse(this.getConfig().getId(), request.getRequestId(), ledger, request.getRequestId());
         response.setType(Message.Type.REPLY);
         clientsLink.send(request.getSenderId(), response);
     }

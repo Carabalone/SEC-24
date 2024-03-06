@@ -53,7 +53,6 @@ public class BlockchainService implements UDPService {
                     try {
                         // receba
                         Message message = clientsLink.receive();
-                        System.out.println("BLOCKCHAIN SERVICE: Received message: " + message.getType() + " from " + message.getSenderId());
 
                         new Thread(() -> {
                             switch (message.getType())  {
@@ -61,7 +60,6 @@ public class BlockchainService implements UDPService {
                                 case APPEND -> {
                                     LOGGER.log(Level.INFO, MessageFormat.format("{0} - BLOCKCHAIN SERVICE: Received append request from {1}",
                                             selfConfig.getId(), message.getSenderId()));
-                                    System.out.printf("BLOCKCHAIN SERVICE: My Node Service is %s\n", nodeService);
                                     nodeService.append((LedgerRequest) message);
                                 }
 

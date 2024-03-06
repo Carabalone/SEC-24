@@ -13,6 +13,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Library {
 
@@ -26,14 +27,14 @@ public class Library {
     // Link to communicate with blockchain nodes
     private final Link link;
 
-    // Responses received to specific nonce request {nonce -> responses[]}
+    // we broadcast a request to all nodes and wait for their responses
     private final Map<Integer, List<LedgerResponse>> responses = new ConcurrentHashMap<>();
     // Messages sent by the client {nonce -> request}
     private final Map<Integer, LedgerRequest> requests = new ConcurrentHashMap<>();
 
     private AtomicInteger requestId = new AtomicInteger(0);
 
-    private final List<String> blockchain = new ArrayList<>();
+    private List<String> blockchain = new ArrayList<>();
 
 
     public Library(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs) {
@@ -51,6 +52,15 @@ public class Library {
                 activateLogs, 5000, true);
     }
 
+    private void addResponse(int requestId, LedgerResponse response) {
+        List<LedgerResponse> responses = this.responses.get(requestId);
+        if (responses == null) {
+            responses = new ArrayList<>();
+            this.responses.put(requestId, responses);
+        }
+        responses.add(response);
+    }
+
     public List<String> append(String value) {
         int clientRequestId = this.requestId.getAndIncrement();
 
@@ -58,19 +68,29 @@ public class Library {
         this.link.broadcast(request);
 
         LedgerResponse ledgerResponse;
-        while ((ledgerResponse = (LedgerResponse) responses.get(clientRequestId)) == null) {
+        while (!responses.containsKey(clientRequestId) || (responses.containsKey(clientRequestId) && responses.get(clientRequestId).isEmpty())) {
             try {
-                Thread.sleep(1000);
+                Thread.sleep(100);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
 
+        ledgerResponse = responses.get(clientRequestId).get(0);
+
         // Add new values to the blockchain
         List<String> blockchainValues = ledgerResponse.getValues();
-        blockchain.addAll(ledgerResponse.getValues().stream().toList());
+
+        // we send the whole ledger from the node to the client
+        // we could send only the new values, but as of right now I don't know if there would be any
+        // consistency problems with that option, so for now we just replace the whole blockchain
+        blockchain = ledgerResponse.getValues();
+        //blockchain.addAll(ledgerResponse.getValues().stream().toList());
 
         responses.remove(clientRequestId);
+
+        // log responses after removal
+
         return blockchainValues;
     }
 
@@ -103,13 +123,26 @@ public class Library {
                                 LOGGER.log(Level.INFO, MessageFormat.format("Message content: {0}", message.getSenderId(), message.getType()));
                                 if (message instanceof LedgerResponse) {
                                     LedgerResponse response = (LedgerResponse) message;
-                                    blockchain.add(response.getValues().get(0));
+                                    addResponse(response.getRequestId(), response);
+                                    // there is a delay here. We add the response and wee need to wait until the value is actually added by the append
+                                    // method that is waiting for the response to be added.
+                                    // maybe we should refactor this.
+                                    try {
+                                        Thread.sleep(150); // just for debug purposes
+                                    }   catch (InterruptedException e) {
+                                        e.printStackTrace();
+                                    }
+                                    System.out.println("LIBRARY: Added values to the blockhain: " + response.getValues().get(response.getValues().size() - 1));
                                     System.out.printf("LIBRARY: Blockchain: %s\n", blockchain);
-                                    System.out.println("LIBRARY: Added values to the blockhain: " + response.getValues().get(0));
                                 }
                             }
 
-                            default -> throw new HDSSException(ErrorMessage.CannotParseMessage);
+                            default -> {
+                                LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received unknown {1} message from {2}",
+                                        config.getId(), message.getType(), message.getSenderId()));
+                                LOGGER.log(Level.INFO, MessageFormat.format("{0} Continuing as normal...", config.getId()));
+
+                            }
                         }
                     }
                 }
