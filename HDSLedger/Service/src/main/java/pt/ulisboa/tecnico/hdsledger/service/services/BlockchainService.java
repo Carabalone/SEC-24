@@ -40,7 +40,9 @@ public class BlockchainService implements UDPService {
 
     public void append(LedgerRequest message) {
         System.out.printf("BLOCKCHAIN SERVICE: Received append request from %s\n", message.getSenderId());
-        this.nodeService.append(message);
+        //this.nodeService.append(message);
+        if (this.selfConfig.isLeader())
+            this.nodeService.startConsensus(message.getValue());
     }
 
     // this is blocking
@@ -60,7 +62,7 @@ public class BlockchainService implements UDPService {
                                 case APPEND -> {
                                     LOGGER.log(Level.INFO, MessageFormat.format("{0} - BLOCKCHAIN SERVICE: Received append request from {1}",
                                             selfConfig.getId(), message.getSenderId()));
-                                    nodeService.append((LedgerRequest) message);
+                                    append((LedgerRequest) message);
                                 }
 
                                 case PING -> {

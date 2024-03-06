@@ -363,7 +363,7 @@ public class NodeService implements UDPService {
 
                             switch (message.getType()) {
 
-                                case PRE_PREPARE ->uponPrePrepare((ConsensusMessage) message);
+                                case PRE_PREPARE -> uponPrePrepare((ConsensusMessage) message);
 
                                 case PREPARE -> uponPrepare((ConsensusMessage) message);
 
