@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 
@@ -47,6 +48,7 @@ public class NodeService implements UDPService {
     // Ledger (for now, just a list of strings)
     private ArrayList<String> ledger = new ArrayList<String>();
 
+    private CountDownLatch consensusLatch = new CountDownLatch(1);
     public NodeService(Link nodesLink, Link clientsLink,
                        ProcessConfig config, ProcessConfig leaderConfig, ProcessConfig[] nodesConfig) {
 
@@ -96,6 +98,12 @@ public class NodeService implements UDPService {
      * @param inputValue Value to value agreed upon
      */
     public void startConsensus(String value) {
+
+        try {
+            Thread.sleep(5000);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         // Set initial consensus values
         int localConsensusInstance = this.consensusInstance.incrementAndGet();
@@ -327,6 +335,8 @@ public class NodeService implements UDPService {
 
             lastDecidedConsensusInstance.getAndIncrement();
 
+            consensusLatch.countDown();
+
             LOGGER.log(Level.INFO,
                     MessageFormat.format(
                             "{0} - Decided on Consensus Instance {1}, Round {2}, Successful? {3}",
@@ -345,6 +355,16 @@ public class NodeService implements UDPService {
 
     public void ping() {
         System.out.println("Received ping");
+    }
+
+    public void waitForConsensus() {
+        try {
+            consensusLatch.await();
+
+            consensusLatch = new CountDownLatch(1);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override

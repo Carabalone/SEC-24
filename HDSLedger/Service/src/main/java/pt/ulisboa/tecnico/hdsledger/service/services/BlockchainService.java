@@ -43,6 +43,8 @@ public class BlockchainService implements UDPService {
         //this.nodeService.append(message);
         if (this.selfConfig.isLeader())
             this.nodeService.startConsensus(message.getValue());
+
+        nodeService.waitForConsensus();
     }
 
     // this is blocking
