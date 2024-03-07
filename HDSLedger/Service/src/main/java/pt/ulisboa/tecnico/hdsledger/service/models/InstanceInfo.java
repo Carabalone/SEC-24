@@ -2,6 +2,8 @@ package pt.ulisboa.tecnico.hdsledger.service.models;
 
 
 import pt.ulisboa.tecnico.hdsledger.communication.CommitMessage;
+import pt.ulisboa.tecnico.hdsledger.communication.PrepareMessage;
+import pt.ulisboa.tecnico.hdsledger.communication.RoundChangeMessage;
 
 public class InstanceInfo {
 
@@ -11,6 +13,9 @@ public class InstanceInfo {
     private CommitMessage commitMessage;
     private String inputValue;
     private int committedRound = -1;
+
+
+    private RoundChangeMessage roundChangeMessage;
 
     public InstanceInfo(String inputValue) {
         this.inputValue = inputValue;
@@ -62,5 +67,13 @@ public class InstanceInfo {
 
     public void setCommitMessage(CommitMessage commitMessage) {
         this.commitMessage = commitMessage;
+    }
+
+    public RoundChangeMessage getRoundChangeMessage() {
+        return roundChangeMessage;
+    }
+
+    public void setRoundChangeMessage(RoundChangeMessage roundChangeMessage) {
+        this.roundChangeMessage = roundChangeMessage;
     }
 }

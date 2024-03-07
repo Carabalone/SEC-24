@@ -1,0 +1,33 @@
+every instance spits out ONE block that is the result of the conensus.
+
+instance number one, append the block resulting from consensus in position one.
+everyone knows who the leader is.
+
+validator = process
+
+everey process has a local time/timer that sets when the round begins. IF the algorithm is not 
+making process then the timer will expire
+
+when timer expire dont accept any more messages. broadcast round change to everyone including
+leader, wait for 2f+1 msgs of progress round. GO to the next round and restart the algorithm
+
+
+if new leader sees 2f+1 prepare messages with v in the previous round. new leader has to propose V.
+
+ROUND_CHANGE {
+  | 2f+1 prepare messages for value V in round R OR
+  | nothing
+}
+
+PRE_PREPARE {
+  | 2f+1 prepare for highest round OR
+  | 2f+1 round change messages
+}
+
+use signatures to sign messages -> será que podemos relaxar isso ? Mas fazer com sign messages primeiro
+
+pasta com chaves gerardas em plaintext -> OK (pré distribuidas e conhecidas pro toda a gente)
+
+aplicação em cima da infraestrutura do 1o projeto
+
+temos fair loss, construir mais abstração até chegar em canais que o protocolo assume

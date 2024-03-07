@@ -13,7 +13,7 @@ public class Message implements Serializable {
 
     public enum Type {
         APPEND, PING,
-        PRE_PREPARE, PREPARE, COMMIT, ACK, IGNORE,
+        PRE_PREPARE, PREPARE, COMMIT, ACK, IGNORE, ROUND_CHANGE,
         REPLY, REQUEST;
     }
 

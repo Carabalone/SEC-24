@@ -1,1 +1,4 @@
 a message inclui o destino pq se não um agente maléfico pode mandar a mensagem autenticada pra um destino que a gente não quer
+
+nodes podem virar corretas/bizantinas a qualquer momento
+o pior caso de mandar pra f+1 processos onde a node correta nao consegue mandar nd podemos desconsiderar e considerar q uma node correta manda broadcast imediatamente depois de receber um pedido.

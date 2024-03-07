@@ -52,15 +52,14 @@ public class BlockchainService implements UDPService {
     }
 
     public void append(LedgerRequest message) {
-        System.out.printf("BLOCKCHAIN SERVICE: Received append request from %s\n", message.getSenderId());
         if (this.selfConfig.isLeader()) {
             //this.nodeService.setTimer();
             this.nodeService.startConsensus(message.getValue());
         }
 
-        while (!consensusReached) {}
+        while (!consensusReached);
 
-        System.out.println("BLOCKCHAIN SERVICE: Consensus reached");
+        System.out.println("[BLOCKCHAIN SERVICE]: Consensus reached");
         LedgerResponse ledgerResponse = getLedgerResponse((LedgerRequest) message);
         clientsLink.send(message.getSenderId(), ledgerResponse);
         this.setConsensusReached(false);

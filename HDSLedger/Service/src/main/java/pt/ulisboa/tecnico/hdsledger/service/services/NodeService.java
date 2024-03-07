@@ -15,6 +15,8 @@ import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.HDSTimer;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 
+import javax.swing.text.html.Option;
+
 public class NodeService implements UDPService {
 
     private static final CustomLogger LOGGER = new CustomLogger(NodeService.class.getName());
@@ -35,6 +37,8 @@ public class NodeService implements UDPService {
     private final MessageBucket prepareMessages;
     // Consensus instance -> Round -> List of commit messages
     private final MessageBucket commitMessages;
+
+    private final MessageBucket roundChangeMessages;
 
     // Store if already received pre-prepare for a given <consensus, round>
     private final Map<Integer, Map<Integer, Boolean>> receivedPrePrepare = new ConcurrentHashMap<>();
@@ -65,6 +69,7 @@ public class NodeService implements UDPService {
 
         this.prepareMessages = new MessageBucket(nodesConfig.length);
         this.commitMessages = new MessageBucket(nodesConfig.length);
+        this.roundChangeMessages = new MessageBucket(nodesConfig.length);
     }
 
     public ProcessConfig getConfig() {
@@ -330,6 +335,12 @@ public class NodeService implements UDPService {
                 consensusInstance, round);
 
         if (commitValue.isPresent() && instance.getCommittedRound() < round) {
+            try {
+                System.out.println("[NODE SERVICE]: Sleeping for 10 seconds for timer to run");
+                Thread.sleep(10000);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
             timer.cancel();
 
             instance = this.instanceInfo.get(consensusInstance);
@@ -390,7 +401,36 @@ public class NodeService implements UDPService {
         InstanceInfo existingConsensus = this.instanceInfo.get(localInstance);
         existingConsensus.setCurrentRound(existingConsensus.getCurrentRound() + 1);
 
+        int round = existingConsensus.getCurrentRound();
+        System.out.println("[TIMER]: EXPIRED.");
+
         startTimer();
+
+        RoundChangeMessage roundChangeMessage = new RoundChangeMessage(localInstance, round,
+                                                existingConsensus.getPreparedRound(),
+                                                existingConsensus.getPreparedValue());
+
+        existingConsensus.setRoundChangeMessage(roundChangeMessage);
+
+        ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.ROUND_CHANGE)
+                .setConsensusInstance(localInstance)
+                .setRound(round)
+                .setMessage(roundChangeMessage.toJson())
+                .build();
+
+        nodesLink.broadcast(consensusMessage);
+    }
+
+    public void uponRoundChange(ConsensusMessage message) {
+        int consensusInstance = message.getConsensusInstance();
+        int round = message.getRound();
+
+        LOGGER.log(Level.INFO,
+                MessageFormat.format("{0} - Received ROUND_CHANGE message from {1}: Consensus Instance {2}, Round {3}",
+                        config.getId(), message.getSenderId(), consensusInstance, round));
+
+        roundChangeMessages.addMessage(message);
+        Optional<String> value = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
     }
 
     @Override
@@ -401,8 +441,6 @@ public class NodeService implements UDPService {
                 try {
                     while (true) {
                         Message message = nodesLink.receive();
-
-                        System.out.println("Node Service Received message: " + message.getType() + " from " + message.getSenderId());
 
                         // Separate thread to handle each message
                         new Thread(() -> {
@@ -423,6 +461,9 @@ public class NodeService implements UDPService {
                                     LOGGER.log(Level.INFO,
                                             MessageFormat.format("{0} - Received IGNORE message from {1}",
                                                     config.getId(), message.getSenderId()));
+
+                                case ROUND_CHANGE ->
+                                    uponRoundChange((ConsensusMessage) message);
 
                                 default ->
                                     LOGGER.log(Level.INFO,
