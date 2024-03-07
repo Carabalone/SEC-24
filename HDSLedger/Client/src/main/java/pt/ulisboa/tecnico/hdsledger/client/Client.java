@@ -78,6 +78,13 @@ public class Client {
                         break;
                     }
 
+                    case "wait" -> {
+                        System.out.println("waiting " + terms[1] + "Milliseconds");
+                        HDSTimer timer = new HDSTimer(Integer.parseInt(terms[1]));
+                        timer.waitExpiration();
+                        System.out.println("Timer has expired");
+                    }
+
                     default -> {
                         System.out.println("unrecognized command");
                         break;
