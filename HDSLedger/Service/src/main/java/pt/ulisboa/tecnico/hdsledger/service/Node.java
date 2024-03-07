@@ -52,6 +52,8 @@ public class Node {
                     nodeConfig, nodeConfigs, clientConfigs, nodeService
             );
 
+            nodeService.setBlockchainService(blockchainService);
+
             blockchainService.listen();
             nodeService.listen();
 

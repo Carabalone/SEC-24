@@ -47,6 +47,10 @@ public class NodeService implements UDPService {
     // Ledger (for now, just a list of strings)
     private ArrayList<String> ledger = new ArrayList<String>();
 
+    private BlockchainService blockchainService;
+
+    private ArrayList<String> lastCommitedValue = new ArrayList<>();
+
     public NodeService(Link nodesLink, Link clientsLink,
                        ProcessConfig config, ProcessConfig leaderConfig, ProcessConfig[] nodesConfig) {
 
@@ -75,7 +79,15 @@ public class NodeService implements UDPService {
     private boolean isLeader(String id) {
         return this.leaderConfig.getId().equals(id);
     }
- 
+
+    public BlockchainService getBlockchainService() {
+        return this.blockchainService;
+    }
+
+    public void setBlockchainService(BlockchainService blockchainService) {
+        this.blockchainService = blockchainService;
+    }
+
     public ConsensusMessage createConsensusMessage(String value, int instance, int round) {
         PrePrepareMessage prePrepareMessage = new PrePrepareMessage(value);
 
@@ -128,6 +140,24 @@ public class NodeService implements UDPService {
             LOGGER.log(Level.INFO,
                     MessageFormat.format("{0} - Node is not leader, waiting for PRE-PREPARE message", config.getId()));
         }
+    }
+
+    public void setTimer() {
+        // Only non-leader nodes set the timer since leader will be the one
+        // creating blocks with received transactions
+        if (this.config.isLeader())
+            return;
+
+        String leaderId = this.leaderConfig.getId();
+
+        Timer timer = new Timer();
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                LOGGER.log(Level.INFO, MessageFormat.format("{0} - Timer expired, sending ACK to leader {1}",
+                        config.getId(), leaderId));
+            }
+        }, 30 * 1000);
     }
 
     /*
@@ -318,6 +348,7 @@ public class NodeService implements UDPService {
                 }
                 
                 ledger.add(consensusInstance - 1, value);
+                setLastCommitedValue(value);
                 
                 LOGGER.log(Level.INFO,
                     MessageFormat.format(
@@ -326,6 +357,7 @@ public class NodeService implements UDPService {
             }
 
             lastDecidedConsensusInstance.getAndIncrement();
+            append(value);
 
             LOGGER.log(Level.INFO,
                     MessageFormat.format(
@@ -334,13 +366,20 @@ public class NodeService implements UDPService {
         }
     }
 
-    public void append(LedgerRequest request) {
-        System.out.print("NODE SERVICE: Got append request from blockchain service: ");
-        ledger.add(request.getValue());
+    private void setLastCommitedValue(String value) {
+        if (lastCommitedValue.size() > 0) {
+            lastCommitedValue.remove(0);
+        }
+        lastCommitedValue.add(value);
+    }
 
-        LedgerResponse response = new LedgerResponse(this.getConfig().getId(), request.getRequestId(), ledger, request.getRequestId());
-        response.setType(Message.Type.REPLY);
-        clientsLink.send(request.getSenderId(), response);
+    public ArrayList<String> getLastCommitedValue() {
+        return lastCommitedValue;
+    }
+
+    public void append(String value) {
+        setLastCommitedValue(value);
+        this.blockchainService.setConsensusReached(true);
     }
 
     public void ping() {
