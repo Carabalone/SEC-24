@@ -131,17 +131,17 @@ public class Link {
                 if (nodeId.equals(this.config.getId())) {
                     this.localhostQueue.add(data);
 
-                    LOGGER.log(Level.INFO,
-                            MessageFormat.format("{0} - Message {1} (locally) sent to {2}:{3} successfully",
-                                    config.getId(), data.getType(), destAddress, destPort));
+//                    LOGGER.log(Level.INFO,
+//                            MessageFormat.format("{0} - Message {1} (locally) sent to {2}:{3} successfully",
+//                                    config.getId(), data.getType(), destAddress, destPort));
 
                     return;
                 }
 
                 for (;;) {
-                    LOGGER.log(Level.INFO, MessageFormat.format(
-                            "{0} - Sending {1} message to {2}:{3} with message ID {4} - Attempt #{5}", config.getId(),
-                            data.getType(), destAddress, destPort, messageId, count++));
+//                    LOGGER.log(Level.INFO, MessageFormat.format(
+//                            "{0} - Sending {1} message to {2}:{3} with message ID {4} - Attempt #{5}", config.getId(),
+//                            data.getType(), destAddress, destPort, messageId, count++));
 
                     unreliableSend(destAddress, destPort, data);
 
@@ -155,8 +155,8 @@ public class Link {
                     sleepTime <<= 1;
                 }
 
-                LOGGER.log(Level.INFO, MessageFormat.format("{0} - Message {1} sent to {2}:{3} successfully",
-                        config.getId(), data.getType(), destAddress, destPort));
+//                LOGGER.log(Level.INFO, MessageFormat.format("{0} - Message {1} sent to {2}:{3} successfully",
+//                        config.getId(), data.getType(), destAddress, destPort));
             } catch (InterruptedException | UnknownHostException e) {
                 e.printStackTrace();
             }
@@ -229,7 +229,7 @@ public class Link {
             message = new Gson().fromJson(responseData.getMessage(), Message.class);
 
             // Verify signature
-            System.out.println("Sender ID: " + message.getSenderId());
+            //System.out.println("Sender ID: " + message.getSenderId());
 
             if (!DigitalSignature.verifySignature(responseData.getMessage(), responseData.getSignature(),
                     nodes.get(message.getSenderId()).getPublicKeyPath())) {

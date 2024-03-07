@@ -56,7 +56,7 @@ public class NodeService implements UDPService {
 
     private ArrayList<String> lastCommitedValue = new ArrayList<>();
 
-    private Timer timer;
+    private Timer timer = null;
 
     public NodeService(Link nodesLink, Link clientsLink,
                        ProcessConfig config, ProcessConfig leaderConfig, ProcessConfig[] nodesConfig) {
@@ -119,6 +119,7 @@ public class NodeService implements UDPService {
 
         // Set initial consensus values
         int localConsensusInstance = this.consensusInstance.incrementAndGet();
+        LOGGER.log(Level.WARNING, MessageFormat.format("[NODE] got consensus {0}", localConsensusInstance));
         InstanceInfo existingConsensus = this.instanceInfo.put(localConsensusInstance, new InstanceInfo(value));
 
         // If startConsensus was already called for a given round
@@ -153,6 +154,8 @@ public class NodeService implements UDPService {
     }
 
     public void startTimer() {
+        if (timer != null)
+            timer.cancel();
         timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
@@ -190,6 +193,14 @@ public class NodeService implements UDPService {
 
         // Set instance value
         this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));
+
+        //if (!(consensusInstance > lastDecidedConsensusInstance.get() + 1))
+        // i dont know if we can do this, but it's the only way I can get to save the consensus instance
+        // a node that is not the leader node is trying to decide to what consensus instance
+        // I think this can backfire if the leader is byzantine, but I don't know how to do it any other way.
+        // this may be fine with pre prepare message justifications tho.
+        if (consensusInstance > lastDecidedConsensusInstance.get())
+            this.consensusInstance.getAndSet(consensusInstance);
 
         // Within an instance of the algorithm, each upon rule is triggered at most once
         // for any round r
@@ -335,14 +346,6 @@ public class NodeService implements UDPService {
                 consensusInstance, round);
 
         if (commitValue.isPresent() && instance.getCommittedRound() < round) {
-            try {
-                System.out.println("[NODE SERVICE]: Sleeping for 10 seconds for timer to run");
-                Thread.sleep(10000);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            timer.cancel();
-
             instance = this.instanceInfo.get(consensusInstance);
             instance.setCommittedRound(round);
 
@@ -398,6 +401,8 @@ public class NodeService implements UDPService {
 
     public void uponTimerExpire() {
         int localInstance = consensusInstance.get();
+        LOGGER.log(Level.WARNING,
+                MessageFormat.format("local Instance in Timer {0}", localInstance));
         InstanceInfo existingConsensus = this.instanceInfo.get(localInstance);
         existingConsensus.setCurrentRound(existingConsensus.getCurrentRound() + 1);
 
@@ -421,16 +426,26 @@ public class NodeService implements UDPService {
         nodesLink.broadcast(consensusMessage);
     }
 
+    public int maxFaults() {
+        return (nodesConfig.length-1)/3;
+    }
+
     public void uponRoundChange(ConsensusMessage message) {
         int consensusInstance = message.getConsensusInstance();
         int round = message.getRound();
+        InstanceInfo instance = instanceInfo.get(consensusInstance);
 
         LOGGER.log(Level.INFO,
                 MessageFormat.format("{0} - Received ROUND_CHANGE message from {1}: Consensus Instance {2}, Round {3}",
                         config.getId(), message.getSenderId(), consensusInstance, round));
 
         roundChangeMessages.addMessage(message);
-        Optional<String> value = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
+
+        Optional<String> roundChangeQuorum = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
+
+        if (roundChangeQuorum.isPresent()) {
+            //TODO
+        }
     }
 
     @Override
