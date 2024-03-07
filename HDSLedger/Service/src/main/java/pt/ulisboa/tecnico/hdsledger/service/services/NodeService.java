@@ -12,6 +12,7 @@ import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilde
 import pt.ulisboa.tecnico.hdsledger.service.models.InstanceInfo;
 import pt.ulisboa.tecnico.hdsledger.service.models.MessageBucket;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
+import pt.ulisboa.tecnico.hdsledger.utilities.HDSTimer;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 
 public class NodeService implements UDPService {
@@ -50,6 +51,8 @@ public class NodeService implements UDPService {
     private BlockchainService blockchainService;
 
     private ArrayList<String> lastCommitedValue = new ArrayList<>();
+
+    private Timer timer;
 
     public NodeService(Link nodesLink, Link clientsLink,
                        ProcessConfig config, ProcessConfig leaderConfig, ProcessConfig[] nodesConfig) {
@@ -140,24 +143,18 @@ public class NodeService implements UDPService {
             LOGGER.log(Level.INFO,
                     MessageFormat.format("{0} - Node is not leader, waiting for PRE-PREPARE message", config.getId()));
         }
+
+        startTimer();
     }
 
-    public void setTimer() {
-        // Only non-leader nodes set the timer since leader will be the one
-        // creating blocks with received transactions
-        if (this.config.isLeader())
-            return;
-
-        String leaderId = this.leaderConfig.getId();
-
-        Timer timer = new Timer();
+    public void startTimer() {
+        timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                LOGGER.log(Level.INFO, MessageFormat.format("{0} - Timer expired, sending ACK to leader {1}",
-                        config.getId(), leaderId));
+                uponTimerExpire();
             }
-        }, 30 * 1000);
+        }, 7000);
     }
 
     /*
@@ -210,6 +207,7 @@ public class NodeService implements UDPService {
                 .setReplyToMessageId(senderMessageId)
                 .build();
 
+        startTimer();
         this.nodesLink.broadcast(consensusMessage);
     }
 
@@ -332,6 +330,7 @@ public class NodeService implements UDPService {
                 consensusInstance, round);
 
         if (commitValue.isPresent() && instance.getCommittedRound() < round) {
+            timer.cancel();
 
             instance = this.instanceInfo.get(consensusInstance);
             instance.setCommittedRound(round);
@@ -384,6 +383,14 @@ public class NodeService implements UDPService {
 
     public void ping() {
         System.out.println("Received ping");
+    }
+
+    public void uponTimerExpire() {
+        int localInstance = consensusInstance.get();
+        InstanceInfo existingConsensus = this.instanceInfo.get(localInstance);
+        existingConsensus.setCurrentRound(existingConsensus.getCurrentRound() + 1);
+
+        startTimer();
     }
 
     @Override
