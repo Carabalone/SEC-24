@@ -441,6 +441,40 @@ public class NodeService implements UDPService {
 
         roundChangeMessages.addMessage(message);
 
+        // upon receiving a set Frc of f + 1 valid 〈ROUND-CHANGE, λi, rj , −, −〉 messages such
+        // that ∀〈ROUND-CHANGE, λi, rj , −, −〉 ∈ Frc : rj > ri do
+        //   let 〈ROUND-CHANGE, hi, rmin, −, −〉 ∈ Frc such that:
+        //     ∀〈ROUND-CHANGE, λi, rj , −, −〉 ∈ Frc : rmin ≤ rj
+        Collection<ConsensusMessage> messages = roundChangeMessages.getMessages(consensusInstance, round).values()
+                .stream().filter(m -> m.getRound() > instance.getCurrentRound()).toList();
+        if (messages.size() > maxFaults() + 1) {
+            Optional<ConsensusMessage> selected = messages.stream()
+                    .min(Comparator.comparingInt(ConsensusMessage::getRound));
+            if (selected.isPresent()) {
+                //  ri ← rmin
+                //  set timeri to running and expire after t(ri)
+                //  broadcast 〈ROUND-CHANGE, λi, ri, pri, pvi〉
+                instance.setCurrentRound(selected.get().getRound());
+
+                startTimer();
+
+                RoundChangeMessage roundChangeMessage = new RoundChangeMessage(consensusInstance, round,
+                        instance.getPreparedRound(),
+                        instance.getPreparedValue());
+
+                instance.setRoundChangeMessage(roundChangeMessage);
+
+                ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.ROUND_CHANGE)
+                        .setConsensusInstance(consensusInstance)
+                        .setRound(round)
+                        .setMessage(roundChangeMessage.toJson())
+                        .build();
+
+                nodesLink.broadcast(consensusMessage);
+                return;
+            }
+        }
+
         Optional<String> roundChangeQuorum = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
 
         if (roundChangeQuorum.isPresent()) {

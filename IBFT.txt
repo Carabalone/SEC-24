@@ -31,3 +31,5 @@ pasta com chaves gerardas em plaintext -> OK (pré distribuidas e conhecidas pro
 aplicação em cima da infraestrutura do 1o projeto
 
 temos fair loss, construir mais abstração até chegar em canais que o protocolo assume
+
+Um Quórum são 2f+1 nodes;
