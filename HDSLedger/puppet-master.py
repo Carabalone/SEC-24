@@ -24,6 +24,10 @@ if (len(sys.argv) > 1):
     except:
         index = 0
 
+if index > len(server_configs) - 1:
+    print(f"\033[93mWarning: Index {index} is out of range for server_config list. Please provide an index between 0 and {len(server_configs) - 1}. Configurations available:\n{', '.join(server_configs)}.\033[0m")
+    sys.exit(0)
+
 server_config = server_configs[index]
 
 print("Choosing config: " + server_config)

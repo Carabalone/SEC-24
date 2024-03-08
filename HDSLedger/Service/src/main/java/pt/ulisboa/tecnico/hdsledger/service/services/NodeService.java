@@ -58,6 +58,8 @@ public class NodeService implements UDPService {
 
     private ArrayList<String> lastCommitedValue = new ArrayList<>();
 
+    // ConsensusInsatance ->
+    private Map<Integer, Boolean> hasAlreadyEnteredSet;
     private Timer timer = null;
 
     // used for message delay failure type
@@ -428,19 +430,23 @@ public class NodeService implements UDPService {
     public void uponTimerExpire() {
         int localInstance = consensusInstance.get();
 
-        LOGGER.log(Level.WARNING,
-                MessageFormat.format("local Instance in Timer {0}", localInstance));
 
         InstanceInfo existingConsensus = this.instanceInfo.get(localInstance);
 
+        LOGGER.log(Level.INFO,
+                MessageFormat.format("{0} - Timer expired for Consensus Instance {1}, Round {2}",
+                        config.getId(), localInstance, existingConsensus.getCurrentRound()));
+
         // ri ← ri + 1
         existingConsensus.setCurrentRound(existingConsensus.getCurrentRound() + 1);
+        LOGGER.log(Level.INFO, MessageFormat.format(
+                "{0} - Changed round to {1}", config.getId(), existingConsensus.getCurrentRound()
+        ));
         updateLeader();
 
         int round = existingConsensus.getCurrentRound();
-        LOGGER.log(Level.INFO,
-                MessageFormat.format("{0} - Timer expired for Consensus Instance {1}, Round {2}",
-                        config.getId(), localInstance, round));
+        LOGGER.log(Level.WARNING,
+                MessageFormat.format("local Instance in Timer {0}", localInstance));
 
         startTimer();
 
@@ -456,6 +462,9 @@ public class NodeService implements UDPService {
                 .setMessage(roundChangeMessage.toJson())
                 .build();
 
+        LOGGER.log(Level.INFO,
+                MessageFormat.format("{0} - Broadcasting ROUND CHANGE message to round {1}",
+                        config.getId(), round));
         nodesLink.broadcast(consensusMessage);
     }
 
@@ -463,14 +472,10 @@ public class NodeService implements UDPService {
         return (nodesConfig.length - 1) / 3;
     }
 
-    public void uponRoundChange(ConsensusMessage message) {
+    private void uponRoundChangeSet(ConsensusMessage message) {
         int consensusInstance = message.getConsensusInstance();
         int round = message.getRound();
         InstanceInfo instance = instanceInfo.get(consensusInstance);
-
-        LOGGER.log(Level.INFO,
-                MessageFormat.format("{0} - Received ROUND_CHANGE message from {1}: Consensus Instance {2}, Round {3}",
-                        config.getId(), message.getSenderId(), consensusInstance, round));
 
         roundChangeMessages.addMessage(message);
 
@@ -481,7 +486,10 @@ public class NodeService implements UDPService {
         Collection<ConsensusMessage> messages = roundChangeMessages.getMessages(consensusInstance, round).values()
                 .stream().filter(m -> m.getRound() > instance.getCurrentRound()).toList();
 
-        if (messages.size() > maxFaults() + 1) {
+        if (messages.size() == maxFaults() + 1) {
+
+            LOGGER.log(Level.INFO,
+                    ("[RC] Entered first round Change predicate."));
 
             Optional<ConsensusMessage> selected = messages.stream()
                     .min(Comparator.comparingInt(ConsensusMessage::getRound));
@@ -493,6 +501,10 @@ public class NodeService implements UDPService {
 
                 InstanceInfo localInstance = instanceInfo.get(getConsensusInstance());
                 localInstance.setCurrentRound(selected.get().getRound());
+
+                LOGGER.log(Level.INFO, MessageFormat.format(
+                        "[RC] Got MIN round rj > ri: {0}", localInstance.getCurrentRound()
+                ));
 
                 updateLeader();
 
@@ -512,10 +524,15 @@ public class NodeService implements UDPService {
                         .build();
 
                 nodesLink.broadcast(consensusMessage);
-
-                return;
             }
         }
+    }
+
+    private void uponRoundChangeQuorum(ConsensusMessage message) {
+
+        int consensusInstance = message.getConsensusInstance();
+        int round = message.getRound();
+        InstanceInfo instance = instanceInfo.get(consensusInstance);
 
         // upon receiving a quorum Qrc of valid <ROUND-CHANGE, λi, ri, _ , _ > messages such
         // that leader(λi, ri) = pi ∧ JustifyRoundChange(Qrc) do
@@ -524,7 +541,12 @@ public class NodeService implements UDPService {
         if (existsRoundChangeQuorum.isPresent()) {
             Collection<ConsensusMessage> quorum = roundChangeMessages.getMessages(consensusInstance, round).values();
 
+
             if (isLeader(config.getId()) /* ^ justifyRoundChange(quorum)) */) {
+
+                LOGGER.log(Level.INFO,
+                        "[RC] Entered second predicate (There is a quorum) and I'm leader"
+                );
 
                 String value;
 
@@ -544,6 +566,20 @@ public class NodeService implements UDPService {
                 this.nodesLink.broadcast(consensusMessage);
             }
         }
+    }
+
+    public void uponRoundChange(ConsensusMessage message) {
+        int consensusInstance = message.getConsensusInstance();
+        int round = message.getRound();
+        InstanceInfo instance = instanceInfo.get(consensusInstance);
+
+        LOGGER.log(Level.INFO,
+                MessageFormat.format("{0} - Received ROUND_CHANGE message from {1}: Consensus Instance {2}, Round {3}",
+                        config.getId(), message.getSenderId(), consensusInstance, round));
+
+        uponRoundChangeSet(message);
+        uponRoundChangeQuorum(message);
+
     }
 
     private long getTimespanMillis(int round) {
@@ -568,10 +604,14 @@ public class NodeService implements UDPService {
 
     // this does not change round, it just changes the leader according to the round in the node state
     private void updateLeader() {
-        int round = consensusInstance.get();
+        int round = instanceInfo.get(consensusInstance.get()).getCurrentRound();
         int nextLeaderIndex = leaderByIndex(round);
-        ProcessConfig nextLeader = nodesConfig[nextLeaderIndex];
-        leaderConfig = nextLeader;
+
+        LOGGER.log(Level.INFO, MessageFormat.format(
+                "[RC] Changing Leader from {0} to {1}", leaderConfig.getId(), nodesConfig[nextLeaderIndex].getId()
+        ));
+
+        leaderConfig = nodesConfig[nextLeaderIndex];
     }
 
     @Override
@@ -602,7 +642,7 @@ public class NodeService implements UDPService {
 
                                 case IGNORE ->
                                     LOGGER.log(Level.INFO,
-                                            MessageFormat.format("{0} - Received IGNORE message from {1}",
+                                            MessageFormat.format("IGNORE from {1}",
                                                     config.getId(), message.getSenderId()));
 
                                 case ROUND_CHANGE -> uponRoundChange((ConsensusMessage) message);
