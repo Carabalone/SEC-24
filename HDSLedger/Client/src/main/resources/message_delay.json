@@ -1,42 +1,23 @@
 [
-    {   
-        "id": "1",
-        "isLeader": true,
-        "hostname": "localhost",
-        "port": 3001,
-        "clientPort": 3011,
-        "publicKeyPath": "../keys/node/key_1_public.pem",
-        "privateKeyPath": "../keys/node/key_1_private.pem",
-        "failureType": "NONE"
-    },
-    {
-        "id": "2",
-        "isLeader": false,
-        "hostname": "localhost",
-        "port": 3002,
-        "clientPort": 3012,
-        "publicKeyPath": "../keys/node/key_2_public.pem",
-        "privateKeyPath": "../keys/node/key_2_private.pem",
-        "failureType": "NONE"
-    },
-    {
-        "id": "3",
-        "isLeader": false,
-        "hostname": "localhost",
-        "port": 3003,
-        "clientPort": 3013,
-        "publicKeyPath": "../keys/node/key_3_public.pem",
-        "privateKeyPath": "../keys/node/key_3_private.pem",
-        "failureType": "NONE"
-    },
-    {
-        "id": "4",
-        "isLeader": false,
-        "hostname": "localhost",
-        "port": 3004,
-        "clientPort": 3014,
-        "publicKeyPath": "../keys/node/key_4_public.pem",
-        "privateKeyPath": "../keys/node/key_4_private.pem",
-        "failureType": "NONE"
-    }
+  {
+    "id": "10",
+    "hostname": "localhost",
+    "port": 4001,
+    "publicKeyPath": "../keys/client/key_1_public.pem",
+    "privateKeyPath": "../keys/client/key_1_private.pem"
+  },
+  {
+    "id": "20",
+    "hostname": "localhost",
+    "port": 4002,
+    "publicKeyPath": "../keys/client/key_2_public.pem",
+    "privateKeyPath": "../keys/client/key_2_private.pem"
+  },
+  {
+    "id": "30",
+    "hostname": "localhost",
+    "port": 4003,
+    "publicKeyPath": "../keys/client/key_3_public.pem",
+    "privateKeyPath": "../keys/client/key_3_private.pem"
+  }
 ]
