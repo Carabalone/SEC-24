@@ -6,6 +6,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
@@ -58,6 +59,9 @@ public class NodeService implements UDPService {
     private ArrayList<String> lastCommitedValue = new ArrayList<>();
 
     private Timer timer = null;
+
+    // used for message delay failure type
+    private int messageDelayCounter = 0;
 
     public NodeService(Link nodesLink, Link clientsLink,
                        ProcessConfig config, ProcessConfig leaderConfig, ProcessConfig[] nodesConfig) {
@@ -117,6 +121,14 @@ public class NodeService implements UDPService {
      * @param inputValue Value to value agreed upon
      */
     public void startConsensus(String value) {
+
+        if (config.getFailureType() == ProcessConfig.FailureType.CRASH) {
+            LOGGER.log(
+                    Level.INFO,
+                    MessageFormat.format("{0} Leader has failure and will not start consensus", config.getId())
+            );
+            return;
+        }
 
         // Set initial consensus values
         int localConsensusInstance = this.consensusInstance.incrementAndGet();
@@ -244,6 +256,22 @@ public class NodeService implements UDPService {
 
         // Doesn't add duplicate messages
         prepareMessages.addMessage(message);
+
+        if (config.getFailureType() == ProcessConfig.FailureType.MESSAGE_DELAY && messageDelayCounter < 1) {
+
+            messageDelayCounter++;
+
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format(
+                            "{0} - Sleeping because MESSAGE_DELAY failure",
+                            config.getId()));
+
+            try {
+                Thread.sleep(5500); // making sure that the timer runs out
+            } catch (Exception e) {
+               e.printStackTrace();
+            }
+        }
 
         // Set instance values
         this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));
@@ -548,19 +576,14 @@ public class NodeService implements UDPService {
 
     @Override
     public void listen() {
+        LOGGER.log(Level.INFO, MessageFormat.format("{0} Failure:  {1}",
+                config.getId(), config.getFailureType()));
         try {
             // Thread to listen on every request
             new Thread(() -> {
                 try {
                     while (true) {
                         Message message = nodesLink.receive();
-
-                        LOGGER.log(Level.INFO, MessageFormat.format("{0} Failure:  {1}",
-                                config.getId(), config.getFailureType()));
-                        // ignore messages if crashed.
-                        if (config.getFailureType() != ProcessConfig.FailureType.NONE) {
-                            continue;
-                        }
 
                         // Separate thread to handle each message
                         new Thread(() -> {

@@ -13,7 +13,8 @@ terminal = "kitty"
 server_configs = [
     "regular_config.json",
     "small_config.json",
-    "tiny_config.json"
+    "tiny_config.json",
+    "message_delay.json"
 ]
 
 index = 0

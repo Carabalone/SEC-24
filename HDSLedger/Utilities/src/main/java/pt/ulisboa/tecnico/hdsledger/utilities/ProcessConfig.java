@@ -7,7 +7,8 @@ public class ProcessConfig {
     public enum FailureType {
         NONE("NONE"),
         CRASH("CRASH"),
-        BYZANTINE("BYZANTINE");
+        BYZANTINE("BYZANTINE"),
+        MESSAGE_DELAY("MESSAGE_DELAY");
 
         String type;
         FailureType(String type) {
