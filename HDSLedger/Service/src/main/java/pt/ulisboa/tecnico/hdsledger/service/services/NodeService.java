@@ -27,7 +27,7 @@ public class NodeService implements UDPService {
     // Current node is leader
     private final ProcessConfig config;
     // Leader configuration
-    private final ProcessConfig leaderConfig;
+    private ProcessConfig leaderConfig;
 
     // Link to communicate with nodes
     private final Link nodesLink;
@@ -165,7 +165,7 @@ public class NodeService implements UDPService {
             public void run() {
                 uponTimerExpire();
             }
-        }, 7000);
+        }, 5000);
     }
 
     /*
@@ -404,6 +404,7 @@ public class NodeService implements UDPService {
 
         // ri ← ri + 1
         existingConsensus.setCurrentRound(existingConsensus.getCurrentRound() + 1);
+        updateLeader();
 
         int round = existingConsensus.getCurrentRound();
         LOGGER.log(Level.INFO,
@@ -458,11 +459,16 @@ public class NodeService implements UDPService {
                 //  ri ← rmin
                 //  set timeri to running and expire after t(ri)
                 //  broadcast 〈ROUND-CHANGE, λi, ri, pri, pvi〉
-                instance.setCurrentRound(selected.get().getRound());
+
+                InstanceInfo localInstance = instanceInfo.get(getConsensusInstance());
+                localInstance.setCurrentRound(selected.get().getRound());
+
+                updateLeader();
 
                 startTimer();
 
-                RoundChangeMessage roundChangeMessage = new RoundChangeMessage(consensusInstance, round,
+                // WARNING: idk if instance should be the local instance instead
+                RoundChangeMessage roundChangeMessage = new RoundChangeMessage(consensusInstance, selected.get().getRound(),
                         instance.getPreparedRound(),
                         instance.getPreparedValue());
 
@@ -482,12 +488,35 @@ public class NodeService implements UDPService {
 
         // upon receiving a quorum Qrc of valid <ROUND-CHANGE, λi, ri, _ , _ > messages such
         // that leader(λi, ri) = pi ∧ JustifyRoundChange(Qrc) do
-        Optional<String> roundChangeQuorum = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
+        Optional<String> existsRoundChangeQuorum = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
 
-        if (roundChangeQuorum.isPresent()) {
-            ConsensusMessage m = roundChangeMessages.getMessages(consensusInstance, round).get(roundChangeQuorum.get());
+        if (existsRoundChangeQuorum.isPresent()) {
+            Collection<ConsensusMessage> quorum = roundChangeMessages.getMessages(consensusInstance, round).values();
 
+            if (isLeader(config.getId()) /* ^ justifyRoundChange(quorum)) */) {
+
+                String value;
+
+                // If HighestPrepared(Qrc) != ⊥
+                if (highestPrepared(quorum).isPresent()) {
+                    value = highestPrepared(quorum).get().getPreparedValue();
+                } else {
+                    value = instance.getInputValue();
+                }
+
+                PrepareMessage prepareMessage = new PrepareMessage(value);
+
+                ConsensusMessage consensusMessage = this.createConsensusMessage(value, consensusInstance, round);
+
+                startTimer();
+
+                this.nodesLink.broadcast(consensusMessage);
+            }
         }
+    }
+
+    private long getTimespanMillis(int round) {
+        return (long) (1000 * Math.pow(2, round));
     }
 
     public int leaderByIndex(int round) {
@@ -498,16 +527,20 @@ public class NodeService implements UDPService {
         return nodesConfig[leaderByIndex(round)].getId();
     }
 
-    public Optional<Pair<Integer, String>> highestPrepared(Map<String, ConsensusMessage> quorum) {
+    public Optional<Pair<Integer, String>> highestPrepared(Collection<ConsensusMessage> quorum) {
 
-        return quorum.values().stream().
+        return quorum.stream().
                 map(ConsensusMessage::deserializeRoundChangeMessage).
                 max(Comparator.comparingInt(RoundChangeMessage::getPreparedRound)).
                 map(m -> new Pair<Integer, String>(m.getPreparedRound(), m.getPreparedValue()));
     }
 
-    private void changeToNextLeader() {
-        //TODO: implement
+    // this does not change round, it just changes the leader according to the round in the node state
+    private void updateLeader() {
+        int round = consensusInstance.get();
+        int nextLeaderIndex = leaderByIndex(round);
+        ProcessConfig nextLeader = nodesConfig[nextLeaderIndex];
+        leaderConfig = nextLeader;
     }
 
     @Override

@@ -17,6 +17,14 @@ public class Pair<T, U> {
         return second;
     }
 
+    public T getPreparedRound() {
+        return first;
+    }
+
+    public U getPreparedValue() {
+        return second;
+    }
+
     @Override
     public String toString() {
         return "(" + first + ", " + second + ")";
