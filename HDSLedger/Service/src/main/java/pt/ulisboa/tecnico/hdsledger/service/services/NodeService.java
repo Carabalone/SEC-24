@@ -197,8 +197,6 @@ public class NodeService implements UDPService {
         // Set instance value
         this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));
 
-        //if (!(consensusInstance > lastDecidedConsensusInstance.get() + 1))
-
         // Within an instance of the algorithm, each upon rule is triggered at most once
         // for any round r
         receivedPrePrepare.putIfAbsent(consensusInstance, new ConcurrentHashMap<>());
@@ -403,6 +401,8 @@ public class NodeService implements UDPService {
                 MessageFormat.format("local Instance in Timer {0}", localInstance));
 
         InstanceInfo existingConsensus = this.instanceInfo.get(localInstance);
+
+        // ri ← ri + 1
         existingConsensus.setCurrentRound(existingConsensus.getCurrentRound() + 1);
 
         int round = existingConsensus.getCurrentRound();
@@ -490,12 +490,24 @@ public class NodeService implements UDPService {
         }
     }
 
+    public int leaderByIndex(int round) {
+        return (round - 1) % nodesConfig.length;
+    }
+
+    public String leader(int round) {
+        return nodesConfig[leaderByIndex(round)].getId();
+    }
+
     public Optional<Pair<Integer, String>> highestPrepared(Map<String, ConsensusMessage> quorum) {
+
         return quorum.values().stream().
                 map(ConsensusMessage::deserializeRoundChangeMessage).
                 max(Comparator.comparingInt(RoundChangeMessage::getPreparedRound)).
                 map(m -> new Pair<Integer, String>(m.getPreparedRound(), m.getPreparedValue()));
+    }
 
+    private void changeToNextLeader() {
+        //TODO: implement
     }
 
     @Override
