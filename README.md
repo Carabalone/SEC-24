@@ -7,6 +7,11 @@ guarantees. It uses the Istanbul BFT consensus algorithm to ensure that all node
 in the same order, achieving State Machine Replication (SMR) and guarantees that all nodes
 have the same state.
 
+## How to run message delay test:
+```bash
+python3 puppet-master.py 3
+```
+
 ## Current Architecture Diagram:
 ![Architecture](HDSLedger/img/architecture.jpg)
 
