@@ -341,6 +341,9 @@ public class NodeService implements UDPService {
                 consensusInstance, round);
 
         if (commitValue.isPresent() && instance.getCommittedRound() < round) {
+
+            timer.cancel();
+
             instance = this.instanceInfo.get(consensusInstance);
             instance.setCommittedRound(round);
 
