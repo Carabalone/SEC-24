@@ -6,7 +6,8 @@
         "port": 3001,
         "clientPort": 3011,
         "publicKeyPath": "../keys/node/key_1_public.pem",
-        "privateKeyPath": "../keys/node/key_1_private.pem"
+        "privateKeyPath": "../keys/node/key_1_private.pem",
+        "FailureType": "NONE",
     },
     {
         "id": "2",
@@ -15,7 +16,8 @@
         "port": 3002,
         "clientPort": 3012,
         "publicKeyPath": "../keys/node/key_2_public.pem",
-        "privateKeyPath": "../keys/node/key_2_private.pem"
+        "privateKeyPath": "../keys/node/key_2_private.pem",
+        "FailureType": "NONE"
     },
     {
         "id": "3",
@@ -24,7 +26,8 @@
         "port": 3003,
         "clientPort": 3013,
         "publicKeyPath": "../keys/node/key_3_public.pem",
-        "privateKeyPath": "../keys/node/key_3_private.pem"
+        "privateKeyPath": "../keys/node/key_3_private.pem",
+        "FailureType": "NONE"
     },
     {
         "id": "4",
@@ -33,6 +36,7 @@
         "port": 3004,
         "clientPort": 3014,
         "publicKeyPath": "../keys/node/key_4_public.pem",
-        "privateKeyPath": "../keys/node/key_4_private.pem"
+        "privateKeyPath": "../keys/node/key_4_private.pem",
+        "FailureType": "NONE"
     }
 ]

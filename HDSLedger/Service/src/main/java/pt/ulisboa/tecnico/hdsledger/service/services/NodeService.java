@@ -13,6 +13,7 @@ import pt.ulisboa.tecnico.hdsledger.service.models.InstanceInfo;
 import pt.ulisboa.tecnico.hdsledger.service.models.MessageBucket;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.HDSTimer;
+import pt.ulisboa.tecnico.hdsledger.utilities.Pair;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 
 import javax.swing.text.html.Option;
@@ -119,6 +120,7 @@ public class NodeService implements UDPService {
 
         // Set initial consensus values
         int localConsensusInstance = this.consensusInstance.incrementAndGet();
+
         LOGGER.log(Level.WARNING, MessageFormat.format("[NODE] got consensus {0}", localConsensusInstance));
         InstanceInfo existingConsensus = this.instanceInfo.put(localConsensusInstance, new InstanceInfo(value));
 
@@ -157,6 +159,7 @@ public class NodeService implements UDPService {
         if (timer != null)
             timer.cancel();
         timer = new Timer();
+
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
@@ -195,12 +198,6 @@ public class NodeService implements UDPService {
         this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));
 
         //if (!(consensusInstance > lastDecidedConsensusInstance.get() + 1))
-        // i dont know if we can do this, but it's the only way I can get to save the consensus instance
-        // a node that is not the leader node is trying to decide to what consensus instance
-        // I think this can backfire if the leader is byzantine, but I don't know how to do it any other way.
-        // this may be fine with pre prepare message justifications tho.
-        if (consensusInstance > lastDecidedConsensusInstance.get())
-            this.consensusInstance.getAndSet(consensusInstance);
 
         // Within an instance of the algorithm, each upon rule is triggered at most once
         // for any round r
@@ -401,13 +398,17 @@ public class NodeService implements UDPService {
 
     public void uponTimerExpire() {
         int localInstance = consensusInstance.get();
+
         LOGGER.log(Level.WARNING,
                 MessageFormat.format("local Instance in Timer {0}", localInstance));
+
         InstanceInfo existingConsensus = this.instanceInfo.get(localInstance);
         existingConsensus.setCurrentRound(existingConsensus.getCurrentRound() + 1);
 
         int round = existingConsensus.getCurrentRound();
-        System.out.println("[TIMER]: EXPIRED.");
+        LOGGER.log(Level.INFO,
+                MessageFormat.format("{0} - Timer expired for Consensus Instance {1}, Round {2}",
+                        config.getId(), localInstance, round));
 
         startTimer();
 
@@ -427,7 +428,7 @@ public class NodeService implements UDPService {
     }
 
     public int maxFaults() {
-        return (nodesConfig.length-1)/3;
+        return (nodesConfig.length - 1) / 3;
     }
 
     public void uponRoundChange(ConsensusMessage message) {
@@ -447,9 +448,12 @@ public class NodeService implements UDPService {
         //     ∀〈ROUND-CHANGE, λi, rj , −, −〉 ∈ Frc : rmin ≤ rj
         Collection<ConsensusMessage> messages = roundChangeMessages.getMessages(consensusInstance, round).values()
                 .stream().filter(m -> m.getRound() > instance.getCurrentRound()).toList();
+
         if (messages.size() > maxFaults() + 1) {
+
             Optional<ConsensusMessage> selected = messages.stream()
                     .min(Comparator.comparingInt(ConsensusMessage::getRound));
+
             if (selected.isPresent()) {
                 //  ri ← rmin
                 //  set timeri to running and expire after t(ri)
@@ -471,15 +475,27 @@ public class NodeService implements UDPService {
                         .build();
 
                 nodesLink.broadcast(consensusMessage);
+
                 return;
             }
         }
 
+        // upon receiving a quorum Qrc of valid <ROUND-CHANGE, λi, ri, _ , _ > messages such
+        // that leader(λi, ri) = pi ∧ JustifyRoundChange(Qrc) do
         Optional<String> roundChangeQuorum = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
 
         if (roundChangeQuorum.isPresent()) {
-            //TODO
+            ConsensusMessage m = roundChangeMessages.getMessages(consensusInstance, round).get(roundChangeQuorum.get());
+
         }
+    }
+
+    public Optional<Pair<Integer, String>> highestPrepared(Map<String, ConsensusMessage> quorum) {
+        return quorum.values().stream().
+                map(ConsensusMessage::deserializeRoundChangeMessage).
+                max(Comparator.comparingInt(RoundChangeMessage::getPreparedRound)).
+                map(m -> new Pair<Integer, String>(m.getPreparedRound(), m.getPreparedValue()));
+
     }
 
     @Override
@@ -490,6 +506,11 @@ public class NodeService implements UDPService {
                 try {
                     while (true) {
                         Message message = nodesLink.receive();
+
+                        // ignore messages if crashed.
+                        if (config.getFailureType() != ProcessConfig.FailureType.NONE) {
+                            continue;
+                        }
 
                         // Separate thread to handle each message
                         new Thread(() -> {
@@ -511,8 +532,7 @@ public class NodeService implements UDPService {
                                             MessageFormat.format("{0} - Received IGNORE message from {1}",
                                                     config.getId(), message.getSenderId()));
 
-                                case ROUND_CHANGE ->
-                                    uponRoundChange((ConsensusMessage) message);
+                                case ROUND_CHANGE -> uponRoundChange((ConsensusMessage) message);
 
                                 default ->
                                     LOGGER.log(Level.INFO,

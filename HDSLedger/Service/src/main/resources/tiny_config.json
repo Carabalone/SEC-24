@@ -6,6 +6,7 @@
         "port": 3001,
         "clientPort": 3011,
         "publicKeyPath": "../keys/node/key_1_public.pem",
-        "privateKeyPath": "../keys/node/key_1_private.pem"
+        "privateKeyPath": "../keys/node/key_1_private.pem",
+        "FailureType": "CRASH"
     }
 ]

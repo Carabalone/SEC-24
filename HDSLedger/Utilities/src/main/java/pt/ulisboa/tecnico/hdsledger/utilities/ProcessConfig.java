@@ -1,7 +1,29 @@
 package pt.ulisboa.tecnico.hdsledger.utilities;
 
 public class ProcessConfig {
+
     public ProcessConfig() {}
+
+    public enum FailureType {
+        NONE("NONE"),
+        CRASH("CRASH"),
+        BYZANTINE("BYZANTINE");
+
+        String type;
+        FailureType(String type) {
+            this.type = type;
+        }
+    }
+
+    public FailureType getFailureType() {
+        return failureType;
+    }
+
+    public void setFailureType(FailureType failureType) {
+        this.failureType = failureType;
+    }
+
+    private FailureType failureType;
 
     private boolean isLeader;
 
