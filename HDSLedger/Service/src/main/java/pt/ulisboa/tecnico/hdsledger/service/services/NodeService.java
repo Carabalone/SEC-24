@@ -552,6 +552,8 @@ public class NodeService implements UDPService {
                     while (true) {
                         Message message = nodesLink.receive();
 
+                        LOGGER.log(Level.INFO, MessageFormat.format("{0} Failure:  {1}",
+                                config.getId(), config.getFailureType()));
                         // ignore messages if crashed.
                         if (config.getFailureType() != ProcessConfig.FailureType.NONE) {
                             continue;
