@@ -486,6 +486,8 @@ public class NodeService implements UDPService {
         Collection<ConsensusMessage> messages = roundChangeMessages.getMessages(consensusInstance, round).values()
                 .stream().filter(m -> m.getRound() > instance.getCurrentRound()).toList();
 
+        // TODO: verify round & instance
+        // TODO:
         if (messages.size() == maxFaults() + 1) {
 
             LOGGER.log(Level.INFO,
