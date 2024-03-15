@@ -52,10 +52,7 @@ public class BlockchainService implements UDPService {
     }
 
     public void append(LedgerRequest message) {
-        if (this.selfConfig.isLeader()) {
-            //this.nodeService.setTimer();
-            this.nodeService.startConsensus(message.getValue());
-        }
+        this.nodeService.startConsensus(message.getValue());
 
         while (!consensusReached);
 
