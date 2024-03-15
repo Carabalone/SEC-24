@@ -40,6 +40,8 @@ public class ProcessConfig {
 
     private int clientPort;
 
+    private int balance;
+
     public boolean isLeader() {
         return isLeader;
     }
@@ -63,4 +65,6 @@ public class ProcessConfig {
     public int getClientPort() { return clientPort; }
 
     protected void setClientPort(int clientPort) { this.clientPort = clientPort; }
+
+    public int getBalance() { return balance; }
 }

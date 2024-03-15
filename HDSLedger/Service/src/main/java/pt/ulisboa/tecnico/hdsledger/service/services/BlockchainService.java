@@ -1,9 +1,6 @@
 package pt.ulisboa.tecnico.hdsledger.service.services;
 
-import pt.ulisboa.tecnico.hdsledger.communication.LedgerRequest;
-import pt.ulisboa.tecnico.hdsledger.communication.LedgerResponse;
-import pt.ulisboa.tecnico.hdsledger.communication.Link;
-import pt.ulisboa.tecnico.hdsledger.communication.Message;
+import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 
@@ -73,8 +70,6 @@ public class BlockchainService implements UDPService {
                         // receba
                         Message message = clientsLink.receive();
 
-
-
                         new Thread(() -> {
                             switch (message.getType())  {
 
@@ -82,6 +77,20 @@ public class BlockchainService implements UDPService {
                                     LOGGER.log(Level.INFO, MessageFormat.format("{0} - BLOCKCHAIN SERVICE: Received append request from {1}",
                                             selfConfig.getId(), message.getSenderId()));
                                     append((LedgerRequest) message);
+                                }
+
+                                case BALANCE -> {
+                                    LOGGER.log(Level.INFO, MessageFormat.format("{0} - BLOCKCHAIN SERVICE: Received balance request from {1}",
+                                            selfConfig.getId(), message.getSenderId()));
+
+                                    LedgerResponseBalance ledgerResponse = new LedgerResponseBalance(this.selfConfig.getId(),
+                                                    Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(message.getSenderId())).findFirst().get().getBalance(), message.getMessageId());
+
+                                    ledgerResponse.setType(Message.Type.REPLY);
+                                    System.out.printf("[BLOCKCHAIN SERVICE]: Sending balance response to %s\n", message.getSenderId());
+                                    System.out.printf("[BLOCKCHAIN SERVICE]: Balance is %d\n", ledgerResponse.getBalance());
+                                    System.out.printf("[BLOCKCHAIN SERVICE]: LEDGER RESPONSE: %s\n", ledgerResponse.getClass());
+                                    clientsLink.send(message.getSenderId(), ledgerResponse);
                                 }
 
                                 case PING -> {

@@ -28,9 +28,9 @@ public class Library {
     private final Link link;
 
     // we broadcast a request to all nodes and wait for their responses
-    private final Map<Integer, List<LedgerResponse>> responses = new ConcurrentHashMap<>();
+    private final Map<Integer, List<Message>> responses = new ConcurrentHashMap<>();
     // Messages sent by the client {nonce -> request}
-    private final Map<Integer, LedgerRequest> requests = new ConcurrentHashMap<>();
+    private final Map<Integer, Message> requests = new ConcurrentHashMap<>();
 
     private AtomicInteger requestId = new AtomicInteger(0);
 
@@ -52,8 +52,8 @@ public class Library {
                 activateLogs, 5000, true);
     }
 
-    private void addResponse(int requestId, LedgerResponse response) {
-        List<LedgerResponse> responses = this.responses.get(requestId);
+    private void addResponse(int requestId, Message response) {
+        List<Message> responses = this.responses.get(requestId);
         if (responses == null) {
             responses = new ArrayList<>();
             this.responses.put(requestId, responses);
@@ -76,7 +76,7 @@ public class Library {
             }
         }
 
-        ledgerResponse = responses.get(clientRequestId).get(0);
+        ledgerResponse = (LedgerResponse) responses.get(clientRequestId).get(0);
 
         // Add new values to the blockchain
         List<String> blockchainValues = ledgerResponse.getValues();
@@ -92,6 +92,31 @@ public class Library {
         // log responses after removal
 
         return blockchainValues;
+    }
+
+    public void checkBalance() {
+        System.out.println("Checking balance");
+        int clientRequestId = this.requestId.getAndIncrement();
+
+        LedgerRequestBalance request = new LedgerRequestBalance(Message.Type.BALANCE, this.config.getId(), clientRequestId, this.blockchain.size());
+        this.link.broadcast(request);
+
+        System.out.printf("LIBRARY: Sent balance request\n");
+        LedgerResponseBalance ledgerResponse;
+        System.out.printf("LIBRARY: Waiting for balance response\n");
+        while (!responses.containsKey(clientRequestId) || (responses.containsKey(clientRequestId) && responses.get(clientRequestId).isEmpty())) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        System.out.printf("LIBRARY: Received balance response\n");
+
+        ledgerResponse = (LedgerResponseBalance) responses.get(clientRequestId).get(0);
+        ledgerResponse.getBalance();
+        System.out.printf("[LIBRARY]: MY BALANCE IS: %d\n", ledgerResponse.getBalance());
     }
 
     public void ping() {
@@ -110,6 +135,7 @@ public class Library {
                 try {
                     while (true) {
                         Message message = link.receive();
+                        System.out.printf("[LIBRARY] RECEIVED MESSAGE: %s\n", message.getClass());
 
                         switch (message.getType()) {
                             case ACK ->
@@ -121,6 +147,7 @@ public class Library {
                                         config.getId(), message.getSenderId()));
 
                                 LOGGER.log(Level.INFO, MessageFormat.format("Message content: {0}", message.getSenderId(), message.getType()));
+
                                 if (message instanceof LedgerResponse) {
                                     LedgerResponse response = (LedgerResponse) message;
                                     addResponse(response.getRequestId(), response);
@@ -135,6 +162,13 @@ public class Library {
                                     System.out.println("LIBRARY: Added values to the blockhain: " + response.getValues().get(response.getValues().size() - 1));
                                     System.out.printf("LIBRARY: Blockchain: %s\n", blockchain);
                                 }
+
+/*                                if (message instanceof LedgerResponseBalance) {
+                                    LedgerResponseBalance response = (LedgerResponseBalance) message;
+                                    addResponse(response.getRequestId(), response);
+                                    System.out.printf("LIBRARY: Balance response: %d\n", response.getBalance());
+                                }*/
+
                             }
 
                             default -> {

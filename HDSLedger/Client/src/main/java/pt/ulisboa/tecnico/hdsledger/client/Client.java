@@ -14,6 +14,7 @@ public class Client {
     private static void help() {
         System.out.println("Welcome to the Serenity Ledger");
         System.out.println("Type 'append <value>' to append a string to the blockchain.");
+        System.out.println("Type 'balance' to check your balance.");
         System.out.println("Type 'ping' to ping all nodes.");
     }
 
@@ -61,7 +62,6 @@ public class Client {
 
                     case "help" -> {
                         help();
-                        break;
                     }
 
                     case "append" -> {
@@ -69,13 +69,16 @@ public class Client {
                             System.out.println("bad input, usage: append <string_to_append>");
                         System.out.println("appending string to the blockchain" + terms[1]);
                         library.append(terms[1]);
-                        break;
                     }
 
                     case "ping" -> {
                         System.out.printf("pinging all nodes, my id: %s\n", config.get().getId());
                         library.ping();
-                        break;
+                    }
+
+                    case "balance" -> {
+                        System.out.println("getting balance");
+                        library.checkBalance();
                     }
 
                     case "wait" -> {
@@ -87,7 +90,6 @@ public class Client {
 
                     default -> {
                         System.out.println("unrecognized command");
-                        break;
                     }
                 }
             }
