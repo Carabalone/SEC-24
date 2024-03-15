@@ -406,29 +406,36 @@ public class NodeService implements UDPService {
         InstanceInfo existingConsensus = this.instanceInfo.get(localInstance);
 
         // ri ← ri + 1
-        existingConsensus.setCurrentRound(existingConsensus.getCurrentRound() + 1);
-        updateLeader();
+        if (existingConsensus == null) {
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format("{0} - Timer expired for Consensus Instance {1}, but no instance found",
+                            config.getId(), localInstance));
+        }
+        else {
+            existingConsensus.setCurrentRound(existingConsensus.getCurrentRound() + 1);
+            updateLeader();
 
-        int round = existingConsensus.getCurrentRound();
-        LOGGER.log(Level.INFO,
-                MessageFormat.format("{0} - Timer expired for Consensus Instance {1}, Round {2}",
-                        config.getId(), localInstance, round));
+            int round = existingConsensus.getCurrentRound();
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format("{0} - Timer expired for Consensus Instance {1}, Round {2}",
+                            config.getId(), localInstance, round));
 
-        startTimer();
+            startTimer();
 
-        RoundChangeMessage roundChangeMessage = new RoundChangeMessage(localInstance, round,
-                                                existingConsensus.getPreparedRound(),
-                                                existingConsensus.getPreparedValue());
+            RoundChangeMessage roundChangeMessage = new RoundChangeMessage(localInstance, round,
+                    existingConsensus.getPreparedRound(),
+                    existingConsensus.getPreparedValue());
 
-        existingConsensus.setRoundChangeMessage(roundChangeMessage);
+            existingConsensus.setRoundChangeMessage(roundChangeMessage);
 
-        ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.ROUND_CHANGE)
-                .setConsensusInstance(localInstance)
-                .setRound(round)
-                .setMessage(roundChangeMessage.toJson())
-                .build();
+            ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.ROUND_CHANGE)
+                    .setConsensusInstance(localInstance)
+                    .setRound(round)
+                    .setMessage(roundChangeMessage.toJson())
+                    .build();
 
-        nodesLink.broadcast(consensusMessage);
+            nodesLink.broadcast(consensusMessage);
+        }
     }
 
     public int maxFaults() {
@@ -523,6 +530,7 @@ public class NodeService implements UDPService {
     }
 
     public int leaderByIndex(int round) {
+        LOGGER.log(Level.INFO, MessageFormat.format("{0} - Leader by index for round {1}", config.getId(), round));
         return (round - 1) % nodesConfig.length;
     }
 
@@ -540,10 +548,19 @@ public class NodeService implements UDPService {
 
     // this does not change round, it just changes the leader according to the round in the node state
     private void updateLeader() {
-        int round = consensusInstance.get();
-        int nextLeaderIndex = leaderByIndex(round);
-        ProcessConfig nextLeader = nodesConfig[nextLeaderIndex];
-        leaderConfig = nextLeader;
+        InstanceInfo localInstance = instanceInfo.get(getConsensusInstance());
+        if (localInstance == null) {
+            LOGGER.log(Level.INFO, MessageFormat.format("{0} - No instance found for consensus instance {1}",
+                    config.getId(), getConsensusInstance()));
+        }
+        else {
+            int round = localInstance.getCurrentRound();
+            LOGGER.log(Level.INFO, MessageFormat.format("{0} - Updating leader for round {1}", config.getId(), round));
+            LOGGER.log(Level.INFO, MessageFormat.format("Leader by index: {0}", leaderByIndex(round)));
+            int nextLeaderIndex = leaderByIndex(round);
+            ProcessConfig nextLeader = nodesConfig[nextLeaderIndex];
+            leaderConfig = nextLeader;
+        }
     }
 
     @Override
