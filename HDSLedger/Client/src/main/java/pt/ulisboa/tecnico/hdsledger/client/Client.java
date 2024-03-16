@@ -46,7 +46,15 @@ public class Client {
                 String line = scanner.nextLine().trim();
                 String[] terms = line.split("\\s+");
 
-                if (terms.length < 1) System.out.println("Input Something.");
+                if (terms.length < 1) {
+                    System.out.println("input something");
+                    continue;
+                }
+
+                if (terms.length < 2 && !terms[0].equals("testTimer")) {
+                    System.out.println("Input Something.");
+                    continue;
+                }
 
                 String command = terms[0];
 
@@ -73,10 +81,40 @@ public class Client {
                     }
 
                     case "wait" -> {
-                        System.out.println("waiting " + terms[1] + "Milliseconds");
-                        HDSTimer timer = new HDSTimer(Integer.parseInt(terms[1]));
-                        timer.waitExpiration();
-                        System.out.println("Timer has expired");
+                        System.out.println("waiting for " + terms[1] + " Milliseconds");
+                    }
+
+                    case "testTimer" -> {
+                        System.out.println("Starting timer test");
+
+                        HDSTimer timer1 = new HDSTimer();
+                        timer1.subscribe(config.get().getId(), () -> System.out.println("Timer 1 has expired!"));
+                        System.out.println("Starting timer 1 for 2 seconds");
+                        timer1.start(1);
+
+                        HDSTimer timer2 = new HDSTimer();
+                        timer2.subscribe(config.get().getId(), () -> System.out.println("Timer 2 has expired!"));
+                        timer2.start(2);
+                        System.out.println("Starting timer 2 for 4 seconds");
+
+                        HDSTimer timer3 = new HDSTimer();
+                        timer3.subscribe(config.get().getId(), () -> System.out.println("Timer 3 has expired!"));
+                        timer3.start(3);
+                        System.out.println("Starting timer 3 for 8 seconds");
+
+                        HDSTimer timer4 = new HDSTimer();
+                        timer4.subscribe(config.get().getId(), () -> System.out.println("Timer 4 has expired!"));
+                        timer4.start(4);
+                        System.out.println("Starting timer 4 for 16 seconds, stopping it in 6");
+
+                        Thread.sleep(6 * 1000); // wait 6 seconds
+                        System.out.println("Stopping timer 4. Lets wait 16 seconds to see if it really stopped");
+                        timer4.stop();
+                        Thread.sleep(16 * 1000); // making sure timer would have expired without stopping
+                        System.out.println("16 seconds passed, timer 4 would have expired by now, lets restart it for 4 seconds");
+                        timer4.startOrRestart(2);
+                        Thread.sleep(5 * 1000);
+
                     }
 
                     default -> {
