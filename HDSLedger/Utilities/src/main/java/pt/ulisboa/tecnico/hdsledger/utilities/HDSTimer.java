@@ -13,9 +13,14 @@ public class HDSTimer {
     private int exponent;
     private long durationMillis;
     private Timer timer;
+    private int consensusInstance = 0;
     private ConcurrentHashMap<String, TimerListener> subscribers = new ConcurrentHashMap<>();
 
     public HDSTimer() {
+    }
+
+    public HDSTimer(int consensusInstance) {
+        this.consensusInstance = consensusInstance;
     }
 
     public void startOrRestart(int round) {

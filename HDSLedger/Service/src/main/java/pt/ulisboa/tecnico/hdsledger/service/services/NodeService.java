@@ -62,8 +62,6 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
     // consensusInstance -> timer
     private Map<Integer, HDSTimer> timers;
 
-    private Timer timer = null;
-
     // used for message delay failure type
     private int messageDelayCounter = 0;
 
@@ -177,7 +175,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
     }
 
     private void startOrRestartTimer(int instance, int round) {
-        HDSTimer timer = timers.putIfAbsent(instance, new HDSTimer());
+        HDSTimer timer = timers.putIfAbsent(instance, new HDSTimer(instance));
         if (timer == null)
             timer = timers.get(instance);
         timer.subscribe(config.getId(), this);
@@ -513,17 +511,16 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 //  set timeri to running and expire after t(ri)
                 //  broadcast 〈ROUND-CHANGE, λi, ri, pri, pvi〉
 
-                InstanceInfo localInstance = instanceInfo.get(getConsensusInstance());
-                localInstance.setCurrentRound(selected.get().getRound());
+                instance.setCurrentRound(selected.get().getRound());
 
 
                 LOGGER.log(Level.INFO, MessageFormat.format(
-                        "[RC] Got MIN round rj > ri: {0}", localInstance.getCurrentRound()
+                        "[RC] Got MIN round rj > ri: {0}", instance.getCurrentRound()
                 ));
 
                 updateLeader();
 
-                startOrRestartTimer(consensusInstance, localInstance.getCurrentRound());
+                startOrRestartTimer(consensusInstance, instance.getCurrentRound());
 
                 // WARNING: idk if instance should be the local instance instead
                 RoundChangeMessage roundChangeMessage = new RoundChangeMessage(consensusInstance, selected.get().getRound(),
