@@ -29,9 +29,7 @@ public class Client {
             clients = new ProcessConfigBuilder().fromFile(clientPath + configOption);
             Optional<ProcessConfig> config = Arrays.stream(clients).filter(c -> c.getId().equals(clientId)).findFirst();
 
-            if (config.isEmpty()) {
-                throw new HDSSException(ErrorMessage.ClientNotFound);
-            }
+            if (config.isEmpty()) throw new HDSSException(ErrorMessage.ClientNotFound);
 
             Scanner scanner = new Scanner(System.in);
 
@@ -39,11 +37,6 @@ public class Client {
             System.out.println("You can start pressing commands: ");
             Client.help();
 
-            Arrays.stream(nodes).forEach(n -> {
-
-            });
-
-            // Library to interact with the blockchain
             final Library library = new Library(config.get(), nodes, false);
             library.listen();
 
@@ -53,31 +46,29 @@ public class Client {
                 String line = scanner.nextLine().trim();
                 String[] terms = line.split("\\s+");
 
-                if (terms.length < 1)
-                    System.out.println("Input Something.");
+                if (terms.length < 1) System.out.println("Input Something.");
 
                 String command = terms[0];
 
                 switch (command) {
 
-                    case "help" -> {
+                    case "help" ->
                         help();
-                    }
 
                     case "append" -> {
                         if (terms.length < 2)
                             System.out.println("bad input, usage: append <string_to_append>");
-                        System.out.println("appending string to the blockchain" + terms[1]);
+                        System.out.println("Sent request to append" + terms[1] + " to the blockchain");
                         library.append(terms[1]);
                     }
 
                     case "ping" -> {
-                        System.out.printf("pinging all nodes, my id: %s\n", config.get().getId());
+                        System.out.printf("Pinging all nodes, my id: %s\n", config.get().getId());
                         library.ping();
                     }
 
                     case "balance" -> {
-                        System.out.println("getting balance");
+                        System.out.println("Sent request to check balance");
                         library.checkBalance();
                     }
 

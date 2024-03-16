@@ -53,12 +53,14 @@ public class Library {
     }
 
     private void addResponse(int requestId, Message response) {
+        System.out.printf("[LIBRARY] Adding response to request: %d\n", requestId);
         List<Message> responses = this.responses.get(requestId);
         if (responses == null) {
             responses = new ArrayList<>();
             this.responses.put(requestId, responses);
         }
         responses.add(response);
+        System.out.printf("[LIBRARY] Added response to request: %d\n", requestId);
     }
 
     public List<String> append(String value) {
@@ -67,16 +69,10 @@ public class Library {
         LedgerRequest request = new LedgerRequest(Message.Type.APPEND, this.config.getId(), clientRequestId, value, this.blockchain.size());
         this.link.broadcast(request);
 
-        LedgerResponse ledgerResponse;
-        while (!responses.containsKey(clientRequestId) || (responses.containsKey(clientRequestId) && responses.get(clientRequestId).isEmpty())) {
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
+        System.out.printf("[LIBRARY] WAITING FOR MINIMUM SET OF RESPONSES FOR REQUEST: \n", request.getMessageId());
+        waitForMinSetOfResponses(request.getMessageId());
 
-        ledgerResponse = (LedgerResponse) responses.get(clientRequestId).get(0);
+        LedgerResponse ledgerResponse = (LedgerResponse) responses.get(clientRequestId).get(0);
 
         // Add new values to the blockchain
         List<String> blockchainValues = ledgerResponse.getValues();
@@ -101,18 +97,10 @@ public class Library {
         LedgerRequestBalance request = new LedgerRequestBalance(Message.Type.BALANCE, this.config.getId(), clientRequestId, this.blockchain.size());
         this.link.broadcast(request);
 
-        System.out.printf("LIBRARY: Sent balance request\n");
         LedgerResponseBalance ledgerResponse;
-        System.out.printf("LIBRARY: Waiting for balance response\n");
-        while (!responses.containsKey(clientRequestId) || (responses.containsKey(clientRequestId) && responses.get(clientRequestId).isEmpty())) {
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
 
-        System.out.printf("LIBRARY: Received balance response\n");
+        System.out.printf("[LIBRARY] WAITING FOR MINIMUM SET OF RESPONSES FOR REQUEST: \n", request.getMessageId());
+        waitForMinSetOfResponses(clientRequestId);
 
         ledgerResponse = (LedgerResponseBalance) responses.get(clientRequestId).get(0);
         ledgerResponse.getBalance();
@@ -122,6 +110,18 @@ public class Library {
     public void ping() {
         System.out.println("Broadcasting ping");
         link.broadcast(new Message(config.getId(), Message.Type.PING));
+    }
+
+    public void waitForMinSetOfResponses(int requestId) {
+        while (!responses.containsKey(requestId) ||
+                (responses.containsKey(requestId) && responses.get(requestId).isEmpty()) ||
+                responses.get(requestId).size() < (nodeConfigs.length / 3 + 1)) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
 
@@ -135,7 +135,6 @@ public class Library {
                 try {
                     while (true) {
                         Message message = link.receive();
-                        System.out.printf("[LIBRARY] RECEIVED MESSAGE: %s\n", message.getClass());
 
                         switch (message.getType()) {
                             case ACK ->
@@ -151,6 +150,7 @@ public class Library {
                                 if (message instanceof LedgerResponse) {
                                     LedgerResponse response = (LedgerResponse) message;
                                     addResponse(response.getRequestId(), response);
+
                                     // there is a delay here. We add the response and wee need to wait until the value is actually added by the append
                                     // method that is waiting for the response to be added.
                                     // maybe we should refactor this.
@@ -159,7 +159,7 @@ public class Library {
                                     }   catch (InterruptedException e) {
                                         e.printStackTrace();
                                     }
-                                    System.out.println("LIBRARY: Added values to the blockhain: " + response.getValues().get(response.getValues().size() - 1));
+                                    //System.out.println("LIBRARY: Added values to the blockhain: " + response.getValues().get(response.getValues().size() - 1));
                                     System.out.printf("LIBRARY: Blockchain: %s\n", blockchain);
                                 }
 
