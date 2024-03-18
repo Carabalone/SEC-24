@@ -2,6 +2,7 @@ package pt.ulisboa.tecnico.hdsledger.service.services;
 
 import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
+import pt.ulisboa.tecnico.hdsledger.utilities.DigitalSignature;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 
 import java.io.IOException;
@@ -49,7 +50,17 @@ public class BlockchainService implements UDPService {
     }
 
     public void append(LedgerRequest message) {
-        this.nodeService.startConsensus(message.getValue());
+
+        // get client that made the request
+        ProcessConfig clientConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(message.getSenderId())).findFirst().get();
+
+        if (DigitalSignature.verifySignature(message.getValue(), message.getClientSignature(), clientConfig.getPublicKeyPath())) {
+            System.out.println("[BLOCKCHAIN SERVICE]: Signature is valid. Starting consensus...");
+            this.nodeService.startConsensus(message.getValue());
+        } else {
+            System.out.println("[BLOCKCHAIN SERVICE]: Signature is invalid");
+            return;
+        }
 
         while (!consensusReached);
 

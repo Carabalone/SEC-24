@@ -5,9 +5,15 @@ import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import javax.sound.midi.Soundbank;
 import java.io.IOException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
+import java.security.spec.InvalidKeySpecException;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -63,10 +69,13 @@ public class Library {
         System.out.printf("[LIBRARY] Added response to request: %d\n", requestId);
     }
 
-    public List<String> append(String value) {
-        int clientRequestId = this.requestId.getAndIncrement();
+    public List<String> append(String value) throws NoSuchPaddingException, IllegalBlockSizeException,
+            NoSuchAlgorithmException, InvalidKeySpecException, BadPaddingException, IOException, InvalidKeyException {
 
-        LedgerRequest request = new LedgerRequest(Message.Type.APPEND, this.config.getId(), clientRequestId, value, this.blockchain.size());
+        int clientRequestId = this.requestId.getAndIncrement();
+        String signature = DigitalSignature.sign(value, this.config.getPrivateKeyPath());
+
+        LedgerRequest request = new LedgerRequest(Message.Type.APPEND, this.config.getId(), value, signature, clientRequestId, this.blockchain.size());
         this.link.broadcast(request);
 
         System.out.printf("[LIBRARY] WAITING FOR MINIMUM SET OF RESPONSES FOR REQUEST: \n", request.getMessageId());
@@ -84,8 +93,6 @@ public class Library {
         //blockchain.addAll(ledgerResponse.getValues().stream().toList());
 
         responses.remove(clientRequestId);
-
-        // log responses after removal
 
         return blockchainValues;
     }
