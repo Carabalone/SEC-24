@@ -60,7 +60,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
     private ArrayList<String> lastCommitedValue = new ArrayList<>();
 
     // consensusInstance -> timer
-    private Map<Integer, HDSTimer> timers;
+    private Map<Integer, HDSTimer> timers = new ConcurrentHashMap<>();
 
     // used for message delay failure type
     private int messageDelayCounter = 0;
