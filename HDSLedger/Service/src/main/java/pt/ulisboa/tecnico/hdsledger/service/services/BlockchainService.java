@@ -1,5 +1,6 @@
 package pt.ulisboa.tecnico.hdsledger.service.services;
 
+import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.DigitalSignature;
@@ -53,10 +54,11 @@ public class BlockchainService implements UDPService {
 
         // get client that made the request
         ProcessConfig clientConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(message.getSenderId())).findFirst().get();
+        LedgerRequestAppend ledgerRequest = message.deserializeAppend();
 
-        if (DigitalSignature.verifySignature(message.getValue(), message.getClientSignature(), clientConfig.getPublicKeyPath())) {
+        if (DigitalSignature.verifySignature(ledgerRequest.getValue(), ledgerRequest.getClientSignature(), clientConfig.getPublicKeyPath())) {
             System.out.println("[BLOCKCHAIN SERVICE]: Signature is valid. Starting consensus...");
-            this.nodeService.startConsensus(message.getValue());
+            this.nodeService.startConsensus(ledgerRequest.getValue());
         } else {
             System.out.println("[BLOCKCHAIN SERVICE]: Signature is invalid");
             return;
@@ -65,8 +67,11 @@ public class BlockchainService implements UDPService {
         while (!consensusReached);
 
         System.out.println("[BLOCKCHAIN SERVICE]: Consensus reached");
-        LedgerResponse ledgerResponse = getLedgerResponse((LedgerRequest) message);
-        clientsLink.send(message.getSenderId(), ledgerResponse);
+
+        LedgerResponseAppend ledgerResponse = getLedgerResponse(ledgerRequest);
+        String serializedResponse = new Gson().toJson(ledgerResponse);
+        LedgerResponse response = new LedgerResponse(Message.Type.REPLY, Message.Type.APPEND, selfConfig.getId(), serializedResponse);
+        clientsLink.send(message.getSenderId(), response);
         this.setConsensusReached(false);
     }
 
@@ -123,10 +128,10 @@ public class BlockchainService implements UDPService {
         }
     }
 
-    private LedgerResponse getLedgerResponse(LedgerRequest message) {
+    private LedgerResponseAppend getLedgerResponse(LedgerRequestAppend message) {
         int consensusInstance = this.nodeService.getConsensusInstance();
 
-        LedgerResponse ledgerResponse = new LedgerResponse(this.selfConfig.getId(),
+        LedgerResponseAppend ledgerResponse = new LedgerResponseAppend(this.selfConfig.getId(),
                 consensusInstance,
                 this.nodeService.getLastCommitedValue(),
                 message.getRequestId());

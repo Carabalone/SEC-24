@@ -1,25 +1,21 @@
 package pt.ulisboa.tecnico.hdsledger.library;
 
 import com.google.gson.Gson;
-
 import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
-import javax.sound.midi.Soundbank;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class Library {
 
@@ -75,21 +71,25 @@ public class Library {
         int clientRequestId = this.requestId.getAndIncrement();
         String signature = DigitalSignature.sign(value, this.config.getPrivateKeyPath());
 
-        LedgerRequest request = new LedgerRequest(Message.Type.APPEND, this.config.getId(), value, signature, clientRequestId, this.blockchain.size());
-        this.link.broadcast(request);
+        LedgerRequestAppend request = new LedgerRequestAppend(Message.Type.APPEND, this.config.getId(), value, signature, clientRequestId, this.blockchain.size());
+        String serializedRequest = new Gson().toJson(request);
 
-        System.out.printf("[LIBRARY] WAITING FOR MINIMUM SET OF RESPONSES FOR REQUEST: \n", request.getMessageId());
-        waitForMinSetOfResponses(request.getMessageId());
+        LedgerRequest ledgerRequest = new LedgerRequest(this.config.getId(), Message.Type.APPEND, serializedRequest, signature);
+        this.link.broadcast(ledgerRequest);
+
+        System.out.printf("[LIBRARY] WAITING FOR MINIMUM SET OF RESPONSES FOR REQUEST: \n", ledgerRequest.getMessageId());
+        waitForMinSetOfResponses(ledgerRequest.getMessageId());
 
         LedgerResponse ledgerResponse = (LedgerResponse) responses.get(clientRequestId).get(0);
+        LedgerResponseAppend ledgerResponseAppend = ledgerResponse.deserializeAppend();
 
         // Add new values to the blockchain
-        List<String> blockchainValues = ledgerResponse.getValues();
+        List<String> blockchainValues = ledgerResponseAppend.getValues();
 
         // we send the whole ledger from the node to the client
         // we could send only the new values, but as of right now I don't know if there would be any
         // consistency problems with that option, so for now we just replace the whole blockchain
-        blockchain = ledgerResponse.getValues();
+        blockchain = ledgerResponseAppend.getValues();
         //blockchain.addAll(ledgerResponse.getValues().stream().toList());
 
         responses.remove(clientRequestId);
@@ -131,6 +131,24 @@ public class Library {
         }
     }
 
+    public void handleAppendRequest(LedgerResponse response) {
+        if (response.getTypeOfSerializedMessage() == Message.Type.APPEND) {
+            LedgerResponseAppend responseAppend = response.deserializeAppend();
+            addResponse(responseAppend.getRequestId(), response);
+
+            // there is a delay here. We add the response and wee need to wait until the value is actually added by the append
+            // method that is waiting for the response to be added.
+            // maybe we should refactor this.
+            try {
+                Thread.sleep(150); // just for debug purposes
+            }   catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            //System.out.println("LIBRARY: Added values to the blockhain: " + response.getValues().get(response.getValues().size() - 1));
+            System.out.printf("LIBRARY: Blockchain: %s\n", blockchain);
+        }
+    }
+
 
     /*
     *  this listen to responses from the blockchain, not from the client
@@ -156,18 +174,7 @@ public class Library {
 
                                 if (message instanceof LedgerResponse) {
                                     LedgerResponse response = (LedgerResponse) message;
-                                    addResponse(response.getRequestId(), response);
-
-                                    // there is a delay here. We add the response and wee need to wait until the value is actually added by the append
-                                    // method that is waiting for the response to be added.
-                                    // maybe we should refactor this.
-                                    try {
-                                        Thread.sleep(150); // just for debug purposes
-                                    }   catch (InterruptedException e) {
-                                        e.printStackTrace();
-                                    }
-                                    //System.out.println("LIBRARY: Added values to the blockhain: " + response.getValues().get(response.getValues().size() - 1));
-                                    System.out.printf("LIBRARY: Blockchain: %s\n", blockchain);
+                                    handleAppendRequest(response);
                                 }
 
 /*                                if (message instanceof LedgerResponseBalance) {

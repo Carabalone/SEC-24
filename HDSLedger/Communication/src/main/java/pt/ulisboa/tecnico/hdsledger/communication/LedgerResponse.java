@@ -1,39 +1,42 @@
 package pt.ulisboa.tecnico.hdsledger.communication;
 
-import java.util.ArrayList;
+import com.google.gson.Gson;
 
 public class LedgerResponse extends Message {
 
-    // Consensus instance when value was decided
-    private int consensusInstance;
-    // New blockchain values
-    private ArrayList<String> values;
-    private int requestId;
+    // Serialized request
+    private String message;
 
-    public LedgerResponse(String senderId, int consensusInstance, ArrayList<String> values, int requestId) {
-        super(senderId, Type.REPLY);
-        this.consensusInstance = consensusInstance;
-        this.values = values;
-        this.requestId = requestId;
+    private Type typeOfSerializedMessage;
+
+    public LedgerResponse(Type type, Type typeOfSerializedMessage,String senderId, String message) {
+        super(senderId, type);
+        this.message = message;
+        this.typeOfSerializedMessage = typeOfSerializedMessage;
     }
 
-    public ArrayList<String> getValues() {
-        return values;
+    public LedgerResponseAppend deserializeAppend() {
+        return new Gson().fromJson(this.getMessage(), LedgerResponseAppend.class);
     }
 
-    public void setValues(ArrayList<String> values) {
-        this.values = values;
+    public LedgerResponseBalance deserializeBalance() {
+        return new Gson().fromJson(this.getMessage(), LedgerResponseBalance.class);
     }
 
-    public int getConsensusInstance() {
-        return consensusInstance;
+    public String getMessage() {
+        return message;
     }
 
-    public void setConsensusInstance(int consensusInstance) {
-        this.consensusInstance = consensusInstance;
+    public void setMessage(String message) {
+        this.message = message;
     }
 
-    public int getRequestId() {
-        return requestId;
+    public Type getTypeOfSerializedMessage() {
+        return typeOfSerializedMessage;
     }
+
+    public void setTypeOfSerializedMessage(Type typeOfSerializedMessage) {
+        this.typeOfSerializedMessage = typeOfSerializedMessage;
+    }
+
 }

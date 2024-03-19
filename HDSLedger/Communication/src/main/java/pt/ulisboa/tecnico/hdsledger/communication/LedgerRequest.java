@@ -1,34 +1,34 @@
 package pt.ulisboa.tecnico.hdsledger.communication;
 
+import com.google.gson.Gson;
+
 public class LedgerRequest extends Message {
 
-    // value to append to the blockchain
-    private String value;
+    // Serialized request
+    private String message;
 
-    // Signature of value with client's private key
     private String clientSignature;
 
-    private int requestId;
-    // Stored blockchain size
-
-    private int knownBlockchainSize;
-    // Value to append to the blockchain
-
-
-    public LedgerRequest(Type type, String senderId, String value, String clientSignature, int requestId, int knownBlockchainSize) {
+    public LedgerRequest(String senderId, Type type, String message, String signature) {
         super(senderId, type);
-        this.value = value;
-        this.clientSignature = clientSignature;
-        this.requestId = requestId;
-        this.knownBlockchainSize = knownBlockchainSize;
+        this.message = message;
+        this.clientSignature = signature;
     }
 
-    public String getValue() {
-        return value;
+    public LedgerRequestAppend deserializeAppend() {
+        return new Gson().fromJson(message, LedgerRequestAppend.class);
     }
 
-    public void setValue(String value) {
-        this.value = value;
+    public LedgerRequestBalance deserializeBalance() {
+        return new Gson().fromJson(message, LedgerRequestBalance.class);
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
     }
 
     public String getClientSignature() {
@@ -37,21 +37,5 @@ public class LedgerRequest extends Message {
 
     public void setClientSignature(String clientSignature) {
         this.clientSignature = clientSignature;
-    }
-
-    public int getRequestId() {
-        return requestId;
-    }
-
-    public void setRequestId(int requestId) {
-        this.requestId = requestId;
-    }
-
-    public int getKnownBlockchainSize() {
-        return knownBlockchainSize;
-    }
-
-    public void setKnownBlockchainSize(int knownBlockchainSize) {
-        this.knownBlockchainSize = knownBlockchainSize;
     }
 }
