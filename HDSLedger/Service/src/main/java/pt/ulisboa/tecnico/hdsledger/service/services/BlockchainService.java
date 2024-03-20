@@ -78,7 +78,7 @@ public class BlockchainService implements UDPService {
         ProcessConfig clientConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(message.getSenderId())).findFirst().get();
         LedgerRequestBalance ledgerRequest = message.deserializeBalance();
 
-        if (DigitalSignature.verifySignature(message.getClientSignature(), message.getMessage(), clientConfig.getPublicKeyPath())) {
+        if (DigitalSignature.verifySignature(message.getMessage(), message.getClientSignature(), clientConfig.getPublicKeyPath())) {
             System.out.println("[BLOCKCHAIN SERVICE]: Signature is valid. Checking balance...");
         } else {
             System.out.println("[BLOCKCHAIN SERVICE]: Signature is invalid");

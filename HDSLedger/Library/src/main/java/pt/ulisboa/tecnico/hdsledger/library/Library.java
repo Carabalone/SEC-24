@@ -113,9 +113,10 @@ public class Library {
         System.out.printf("[LIBRARY] WAITING FOR MINIMUM SET OF RESPONSES FOR REQUEST: \n", request.getMessageId());
         waitForMinSetOfResponses(ledgerRequest.getRequestId());
 
-        LedgerResponseBalance ledgerResponse = (LedgerResponseBalance) responses.get(clientRequestId).get(0);
-        ledgerResponse.getBalance();
-        System.out.printf("[LIBRARY] MY BALANCE IS: %d\n", ledgerResponse.getBalance());
+        LedgerResponse ledgerResponse = (LedgerResponse) responses.get(clientRequestId).get(0);
+        LedgerResponseBalance ledgerResponseBalance = ledgerResponse.deserializeBalance();
+        ledgerResponseBalance.getBalance();
+        System.out.printf("[LIBRARY] MY BALANCE IS: %d\n", ledgerResponseBalance.getBalance());
     }
 
     public void transfer(int amount, String destination) { }

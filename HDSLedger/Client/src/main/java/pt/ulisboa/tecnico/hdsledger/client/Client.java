@@ -46,16 +46,6 @@ public class Client {
                 String line = scanner.nextLine().trim();
                 String[] terms = line.split("\\s+");
 
-                if (terms.length < 1) {
-                    System.out.println("input something");
-                    continue;
-                }
-
-                if (terms.length < 2 && !terms[0].equals("testTimer")) {
-                    System.out.println("Input Something.");
-                    continue;
-                }
-
                 String command = terms[0];
 
                 switch (command) {
