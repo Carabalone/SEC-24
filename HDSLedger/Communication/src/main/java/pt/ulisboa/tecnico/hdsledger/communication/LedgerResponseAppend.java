@@ -3,18 +3,15 @@ package pt.ulisboa.tecnico.hdsledger.communication;
 import java.util.ArrayList;
 
 public class LedgerResponseAppend extends Message {
-
-    // Consensus instance when value was decided
     private int consensusInstance;
-    // New blockchain values
-    private ArrayList<String> values;
-    private int requestId;
 
-    public LedgerResponseAppend(String senderId, int consensusInstance, ArrayList<String> values, int requestId) {
+    private ArrayList<String> values;
+
+
+    public LedgerResponseAppend(String senderId, int consensusInstance, ArrayList<String> values) {
         super(senderId, Type.REPLY);
         this.consensusInstance = consensusInstance;
         this.values = values;
-        this.requestId = requestId;
     }
 
     public ArrayList<String> getValues() {
@@ -33,7 +30,4 @@ public class LedgerResponseAppend extends Message {
         this.consensusInstance = consensusInstance;
     }
 
-    public int getRequestId() {
-        return requestId;
-    }
 }

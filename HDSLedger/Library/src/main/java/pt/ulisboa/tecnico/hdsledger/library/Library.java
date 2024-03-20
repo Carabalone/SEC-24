@@ -65,16 +65,22 @@ public class Library {
         System.out.printf("[LIBRARY] Added response to request: %d\n", requestId);
     }
 
-    public List<String> append(String value) throws NoSuchPaddingException, IllegalBlockSizeException,
-            NoSuchAlgorithmException, InvalidKeySpecException, BadPaddingException, IOException, InvalidKeyException {
-
+    public List<String> append(String value) {
         int clientRequestId = this.requestId.getAndIncrement();
-        String signature = DigitalSignature.sign(value, this.config.getPrivateKeyPath());
+        String signature;
 
-        LedgerRequestAppend request = new LedgerRequestAppend(Message.Type.APPEND, this.config.getId(), value, signature, clientRequestId, this.blockchain.size());
+        try {
+            signature = DigitalSignature.sign(value, this.config.getPrivateKeyPath());
+        }
+        catch (Exception e) {
+            throw new HDSSException(ErrorMessage.UnableToSignMessage);
+        }
+
+
+        LedgerRequestAppend request = new LedgerRequestAppend(Message.Type.APPEND, this.config.getId(), value, this.blockchain.size());
         String serializedRequest = new Gson().toJson(request);
 
-        LedgerRequest ledgerRequest = new LedgerRequest(this.config.getId(), Message.Type.APPEND, serializedRequest, signature);
+        LedgerRequest ledgerRequest = new LedgerRequest(this.config.getId(), Message.Type.APPEND, clientRequestId, serializedRequest, signature);
         this.link.broadcast(ledgerRequest);
 
         System.out.printf("[LIBRARY] WAITING FOR MINIMUM SET OF RESPONSES FOR REQUEST: \n", ledgerRequest.getMessageId());
@@ -98,20 +104,28 @@ public class Library {
     }
 
     public void checkBalance() {
-        System.out.println("Checking balance");
         int clientRequestId = this.requestId.getAndIncrement();
 
-        LedgerRequestBalance request = new LedgerRequestBalance(Message.Type.BALANCE, this.config.getId(), clientRequestId, this.blockchain.size());
-        this.link.broadcast(request);
+        LedgerRequestBalance request = new LedgerRequestBalance(Message.Type.BALANCE, this.config.getId(),  this.blockchain.size());
+        String serializedRequest = new Gson().toJson(request);
+        String signature;
 
-        LedgerResponseBalance ledgerResponse;
+        try {
+            signature = DigitalSignature.sign(serializedRequest, this.config.getPrivateKeyPath());
+        }
+        catch (Exception e) {
+            throw new HDSSException(ErrorMessage.UnableToSignMessage);
+        }
+
+        LedgerRequest ledgerRequest = new LedgerRequest(this.config.getId(), Message.Type.BALANCE, clientRequestId, serializedRequest, signature);
+        this.link.broadcast(ledgerRequest);
 
         System.out.printf("[LIBRARY] WAITING FOR MINIMUM SET OF RESPONSES FOR REQUEST: \n", request.getMessageId());
         waitForMinSetOfResponses(clientRequestId);
 
-        ledgerResponse = (LedgerResponseBalance) responses.get(clientRequestId).get(0);
+        LedgerResponseBalance ledgerResponse = (LedgerResponseBalance) responses.get(clientRequestId).get(0);
         ledgerResponse.getBalance();
-        System.out.printf("[LIBRARY]: MY BALANCE IS: %d\n", ledgerResponse.getBalance());
+        System.out.printf("[LIBRARY] MY BALANCE IS: %d\n", ledgerResponse.getBalance());
     }
 
     public void ping() {
@@ -132,23 +146,24 @@ public class Library {
     }
 
     public void handleAppendRequest(LedgerResponse response) {
-        if (response.getTypeOfSerializedMessage() == Message.Type.APPEND) {
-            LedgerResponseAppend responseAppend = response.deserializeAppend();
-            addResponse(responseAppend.getRequestId(), response);
+        addResponse(response.getRequestId(), response);
 
-            // there is a delay here. We add the response and wee need to wait until the value is actually added by the append
-            // method that is waiting for the response to be added.
-            // maybe we should refactor this.
-            try {
-                Thread.sleep(150); // just for debug purposes
-            }   catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            //System.out.println("LIBRARY: Added values to the blockhain: " + response.getValues().get(response.getValues().size() - 1));
-            System.out.printf("LIBRARY: Blockchain: %s\n", blockchain);
+        // there is a delay here. We add the response and wee need to wait until the value is actually added by the append
+        // method that is waiting for the response to be added.
+        // maybe we should refactor this.
+        try {
+            Thread.sleep(150); // just for debug purposes
+        }   catch (InterruptedException e) {
+            e.printStackTrace();
         }
+        //System.out.println("LIBRARY: Added values to the blockhain: " + response.getValues().get(response.getValues().size() - 1));
+        System.out.printf("LIBRARY: Blockchain: %s\n", blockchain);
     }
 
+    public void handleBalanceRequest(LedgerResponse response) {
+        LedgerResponseBalance responseBalance = response.deserializeBalance();
+        addResponse(responseBalance.getRequestId(), response);
+    }
 
     /*
     *  this listen to responses from the blockchain, not from the client
@@ -174,15 +189,10 @@ public class Library {
 
                                 if (message instanceof LedgerResponse) {
                                     LedgerResponse response = (LedgerResponse) message;
-                                    handleAppendRequest(response);
+
+                                    if (response.getTypeOfSerializedMessage() == Message.Type.APPEND) handleAppendRequest(response);
+                                    if (response.getTypeOfSerializedMessage() == Message.Type.BALANCE) handleBalanceRequest(response);
                                 }
-
-/*                                if (message instanceof LedgerResponseBalance) {
-                                    LedgerResponseBalance response = (LedgerResponseBalance) message;
-                                    addResponse(response.getRequestId(), response);
-                                    System.out.printf("LIBRARY: Balance response: %d\n", response.getBalance());
-                                }*/
-
                             }
 
                             default -> {

@@ -3,13 +3,14 @@ package pt.ulisboa.tecnico.hdsledger.communication;
 import com.google.gson.Gson;
 
 public class LedgerResponse extends Message {
-
-    // Serialized request
     private String message;
 
     private Type typeOfSerializedMessage;
 
-    public LedgerResponse(Type type, Type typeOfSerializedMessage,String senderId, String message) {
+    private int requestId;
+
+
+    public LedgerResponse(Type type, Type typeOfSerializedMessage, String senderId, String message, int requestId) {
         super(senderId, type);
         this.message = message;
         this.typeOfSerializedMessage = typeOfSerializedMessage;
@@ -21,6 +22,14 @@ public class LedgerResponse extends Message {
 
     public LedgerResponseBalance deserializeBalance() {
         return new Gson().fromJson(this.getMessage(), LedgerResponseBalance.class);
+    }
+
+    public int getRequestId() {
+        return requestId;
+    }
+
+    public void setRequestId(int requestId) {
+        this.requestId = requestId;
     }
 
     public String getMessage() {

@@ -9,8 +9,11 @@ public class LedgerRequest extends Message {
 
     private String clientSignature;
 
-    public LedgerRequest(String senderId, Type type, String message, String signature) {
+    private int requestId;
+
+    public LedgerRequest(String senderId, Type type, int requestId, String message, String signature) {
         super(senderId, type);
+        this.requestId = requestId;
         this.message = message;
         this.clientSignature = signature;
     }
@@ -21,6 +24,18 @@ public class LedgerRequest extends Message {
 
     public LedgerRequestBalance deserializeBalance() {
         return new Gson().fromJson(message, LedgerRequestBalance.class);
+    }
+
+    public LedgerRequestTransfer deserializeTransfer() {
+        return new Gson().fromJson(message, LedgerRequestTransfer.class);
+    }
+
+    public int getRequestId() {
+        return requestId;
+    }
+
+    public void setRequestId(int requestId) {
+        this.requestId = requestId;
     }
 
     public String getMessage() {
