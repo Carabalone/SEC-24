@@ -15,7 +15,7 @@ public class Client {
         System.out.println("Welcome to the Serenity Ledger");
         System.out.println("Type 'append <value>' to append a string to the blockchain.");
         System.out.println("Type 'balance' to check your balance.");
-        System.out.println("Type 'ping' to ping all nodes.");
+        System.out.printf("Type 'transfer <value> <destination>' to transfer value to another client.\n");
     }
 
     public static final void main(String[] args) throws HDSSException {
@@ -60,8 +60,7 @@ public class Client {
 
                 switch (command) {
 
-                    case "help" ->
-                        help();
+                    case "help" -> help();
 
                     case "append" -> {
                         if (terms.length < 2)
@@ -70,19 +69,19 @@ public class Client {
                         library.append(terms[1]);
                     }
 
-                    case "ping" -> {
-                        System.out.printf("Pinging all nodes, my id: %s\n", config.get().getId());
-                        library.ping();
-                    }
-
                     case "balance" -> {
                         System.out.println("Sent request to check balance");
                         library.checkBalance();
                     }
 
-                    case "wait" -> {
-                        System.out.println("waiting for " + terms[1] + " Milliseconds");
+                    case "transfer" -> {
+                        if (terms.length < 3)
+                            System.out.println("bad input, usage: transfer <value> <destination>");
+                        System.out.println("Sent request to transfer " + terms[1] + " to " + terms[2]);
+                        library.transfer(Integer.parseInt(terms[1]), terms[2]);
                     }
+
+                    case "wait" -> System.out.println("waiting for " + terms[1] + " Milliseconds");
 
                     case "testTimer" -> {
                         System.out.println("Starting timer test");
@@ -117,9 +116,7 @@ public class Client {
 
                     }
 
-                    default -> {
-                        System.out.println("unrecognized command");
-                    }
+                    default -> System.out.println("unrecognized command");
                 }
             }
         } catch (Exception e) {

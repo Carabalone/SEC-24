@@ -14,6 +14,7 @@ public class LedgerResponse extends Message {
         super(senderId, type);
         this.message = message;
         this.typeOfSerializedMessage = typeOfSerializedMessage;
+        this.requestId = requestId;
     }
 
     public LedgerResponseAppend deserializeAppend() {
@@ -47,5 +48,4 @@ public class LedgerResponse extends Message {
     public void setTypeOfSerializedMessage(Type typeOfSerializedMessage) {
         this.typeOfSerializedMessage = typeOfSerializedMessage;
     }
-
 }

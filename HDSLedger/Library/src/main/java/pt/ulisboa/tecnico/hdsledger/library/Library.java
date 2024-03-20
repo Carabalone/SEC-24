@@ -4,13 +4,7 @@ import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
 import java.io.IOException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.spec.InvalidKeySpecException;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,11 +12,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 
 public class Library {
-
     private static final CustomLogger LOGGER = new CustomLogger(Library.class.getName());
 
-    // Nodes configs
     private final ProcessConfig[] nodeConfigs;
+
     // Client identifier (self)
     private final ProcessConfig config;
 
@@ -31,6 +24,7 @@ public class Library {
 
     // we broadcast a request to all nodes and wait for their responses
     private final Map<Integer, List<Message>> responses = new ConcurrentHashMap<>();
+
     // Messages sent by the client {nonce -> request}
     private final Map<Integer, Message> requests = new ConcurrentHashMap<>();
 
@@ -44,7 +38,6 @@ public class Library {
     }
 
     public Library(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs, boolean activateLogs) throws HDSSException {
-
         this.config = clientConfig;
         this.nodeConfigs = nodeConfigs;
 
@@ -55,14 +48,12 @@ public class Library {
     }
 
     private void addResponse(int requestId, Message response) {
-        System.out.printf("[LIBRARY] Adding response to request: %d\n", requestId);
         List<Message> responses = this.responses.get(requestId);
         if (responses == null) {
             responses = new ArrayList<>();
             this.responses.put(requestId, responses);
         }
         responses.add(response);
-        System.out.printf("[LIBRARY] Added response to request: %d\n", requestId);
     }
 
     public List<String> append(String value) {
@@ -76,7 +67,6 @@ public class Library {
             throw new HDSSException(ErrorMessage.UnableToSignMessage);
         }
 
-
         LedgerRequestAppend request = new LedgerRequestAppend(Message.Type.APPEND, this.config.getId(), value, this.blockchain.size());
         String serializedRequest = new Gson().toJson(request);
 
@@ -84,7 +74,7 @@ public class Library {
         this.link.broadcast(ledgerRequest);
 
         System.out.printf("[LIBRARY] WAITING FOR MINIMUM SET OF RESPONSES FOR REQUEST: \n", ledgerRequest.getMessageId());
-        waitForMinSetOfResponses(ledgerRequest.getMessageId());
+        waitForMinSetOfResponses(ledgerRequest.getRequestId());
 
         LedgerResponse ledgerResponse = (LedgerResponse) responses.get(clientRequestId).get(0);
         LedgerResponseAppend ledgerResponseAppend = ledgerResponse.deserializeAppend();
@@ -121,17 +111,14 @@ public class Library {
         this.link.broadcast(ledgerRequest);
 
         System.out.printf("[LIBRARY] WAITING FOR MINIMUM SET OF RESPONSES FOR REQUEST: \n", request.getMessageId());
-        waitForMinSetOfResponses(clientRequestId);
+        waitForMinSetOfResponses(ledgerRequest.getRequestId());
 
         LedgerResponseBalance ledgerResponse = (LedgerResponseBalance) responses.get(clientRequestId).get(0);
         ledgerResponse.getBalance();
         System.out.printf("[LIBRARY] MY BALANCE IS: %d\n", ledgerResponse.getBalance());
     }
 
-    public void ping() {
-        System.out.println("Broadcasting ping");
-        link.broadcast(new Message(config.getId(), Message.Type.PING));
-    }
+    public void transfer(int amount, String destination) { }
 
     public void waitForMinSetOfResponses(int requestId) {
         while (!responses.containsKey(requestId) ||
@@ -161,9 +148,10 @@ public class Library {
     }
 
     public void handleBalanceRequest(LedgerResponse response) {
-        LedgerResponseBalance responseBalance = response.deserializeBalance();
-        addResponse(responseBalance.getRequestId(), response);
+        addResponse(response.getRequestId(), response);
     }
+
+    public void handleTransferRequest(LedgerResponse response) { }
 
     /*
     *  this listen to responses from the blockchain, not from the client
@@ -192,6 +180,7 @@ public class Library {
 
                                     if (response.getTypeOfSerializedMessage() == Message.Type.APPEND) handleAppendRequest(response);
                                     if (response.getTypeOfSerializedMessage() == Message.Type.BALANCE) handleBalanceRequest(response);
+                                    if (response.getTypeOfSerializedMessage() == Message.Type.TRANSFER) handleTransferRequest(response);
                                 }
                             }
 

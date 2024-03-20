@@ -70,6 +70,7 @@ public class BlockchainService implements UDPService {
         String serializedResponse = new Gson().toJson(ledgerResponse);
         LedgerResponse response = new LedgerResponse(Message.Type.REPLY, Message.Type.APPEND, selfConfig.getId(), serializedResponse, message.getRequestId());
         clientsLink.send(message.getSenderId(), response);
+        System.out.printf("[BLOCKCHAIN SERVICE]: Sent response with request Id %s\n", response.getRequestId());
         this.setConsensusReached(false);
     }
 
@@ -77,19 +78,18 @@ public class BlockchainService implements UDPService {
         ProcessConfig clientConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(message.getSenderId())).findFirst().get();
         LedgerRequestBalance ledgerRequest = message.deserializeBalance();
 
-/*        if (DigitalSignature.verifySignature(ledgerRequestqi.getValue(), message.getClientSignature(), clientConfig.getPublicKeyPath())) {
-            System.out.println("[BLOCKCHAIN SERVICE]: Signature is valid. Starting consensus...");
-            this.nodeService.startConsensus(ledgerRequest.getValue());
+        if (DigitalSignature.verifySignature(message.getClientSignature(), message.getMessage(), clientConfig.getPublicKeyPath())) {
+            System.out.println("[BLOCKCHAIN SERVICE]: Signature is valid. Checking balance...");
         } else {
             System.out.println("[BLOCKCHAIN SERVICE]: Signature is invalid");
             return;
         }
 
         LedgerResponseBalance ledgerResponse = new LedgerResponseBalance(this.selfConfig.getId(),
-                Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(message.getSenderId())).findFirst().get().getBalance(), message.getMessageId());
-
-        ledgerResponse.setType(Message.Type.REPLY);
-        clientsLink.send(message.getSenderId(), ledgerResponse);*/
+                Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(message.getSenderId())).findFirst().get().getBalance());
+        String serializedResponse = new Gson().toJson(ledgerResponse);
+        LedgerResponse response = new LedgerResponse(Message.Type.REPLY, Message.Type.BALANCE, selfConfig.getId(), serializedResponse, message.getRequestId());
+        clientsLink.send(message.getSenderId(), response);
     }
 
     // this is blocking
@@ -118,11 +118,10 @@ public class BlockchainService implements UDPService {
                                     checkBalance((LedgerRequest) message);
                                 }
 
-                                case PING -> {
-                                    LOGGER.log(Level.INFO, MessageFormat.format("{0} - BLOCKCHAIN SERVICE: Received ping request from {1}",
+                                case TRANSFER -> {
+                                    LOGGER.log(Level.INFO, MessageFormat.format("{0} - BLOCKCHAIN SERVICE: Received transfer request from {1}",
                                             selfConfig.getId(), message.getSenderId()));
-                                    //nodeService.ping();
-                                    //clientsLink.send(message.getSenderId(), new Message(selfConfig.getId(), Message.Type.PING));
+                                    //transfer((LedgerRequest) message);
                                 }
                             }
                             System.out.println("BLOCKCHAIN SERVICE: Finished processing message");
