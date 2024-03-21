@@ -594,6 +594,57 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
     }
 
+    // assumes the quorum exists and receives it
+    private boolean justifyRoundChange(Collection<ConsensusMessage> quorum) {
+        // overview
+        // receives: Quorum<RoundChangeMessage>
+        // return
+        //      ∀〈ROUND-CHANGE, λi, ri, prj , pvj 〉 ∈ Qrc : prj = ⊥ ∧ pvj = ⊥
+        //      ∨ received a quorum of valid 〈PREPARE, λi, pr, pv〉 messages such that:
+        //      (pr, pv) = HighestPrepared(Qrc)
+
+//        boolean allTheSame = quorum.stream()
+//                .map(ConsensusMessage::deserializeRoundChangeMessage)
+//                .map(RoundChangeMessage::getConsensusInstance)
+//                .distinct().count() == 1;
+
+        var firstObject = quorum.stream().toList().get(0);
+        if (firstObject == null) {
+            LOGGER.log(Level.SEVERE, "[JUSTIFY RC] SHOULD NEVER HAPPEN: quorum is empty, returning false...");
+            return false;
+        }
+
+        int instance = firstObject.getConsensusInstance();
+
+        boolean nullPredicate = quorum.stream()
+                .map(ConsensusMessage::deserializeRoundChangeMessage)
+                .allMatch(m -> m.getPreparedRound() == -1 && m.getPreparedValue() == null);
+
+        Optional<Pair<Integer, String>> highestPreparedPair = highestPrepared(quorum);
+
+        if (highestPreparedPair.isEmpty())
+            return nullPredicate;
+
+        int highestPreparedRound = highestPreparedPair.get().getPreparedRound();
+        String highestPreparedValue = highestPreparedPair.get().getPreparedValue();
+
+        Optional<String> existsPrepareQuorum = prepareMessages.hasValidPrepareQuorum(config.getId(), instance, highestPreparedRound);
+
+        if (existsPrepareQuorum.isPresent()) {
+            Collection<ConsensusMessage> prepareQuorum = prepareMessages.getMessages(instance, highestPreparedRound).values();
+
+            //          ∨ received a quorum of valid 〈PREPARE, λi, pr, value〉 messages such that:
+            //          (pr, value) = HighestPrepared(Qrc)
+            boolean highestPreparedPredicate = prepareQuorum.stream()
+                    .allMatch(m -> m.getRound() == highestPreparedRound &&
+                            m.deserializePrepareMessage().getValue().equals(highestPreparedValue));
+
+            return nullPredicate || highestPreparedPredicate;
+        }
+
+        return false;
+    }
+
     private boolean justifyPrePrepare(ConsensusMessage message) {
         // overview
         // return (
@@ -611,11 +662,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         if (round == 1)
             return true;
 
-        String senderId = message.getSenderId();
-        int senderMessageId = message.getMessageId();
 
-        PrePrepareMessage prePrepareMessage = message.deserializePrePrepareMessage();
-
+        // begin nullPredicate
         // or received a quorum Qrc of valid 〈ROUND-CHANGE, λi, round, prj , pvj〉 messages
         Optional<String> existsRoundChangeQuorum = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
 
@@ -628,18 +676,20 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                     .map(ConsensusMessage::deserializeRoundChangeMessage)
                     .allMatch(m -> (m.getPreparedRound() == -1 && m.getPreparedValue() == null));
 
-            Optional<String> existsPrepareQuorum = prepareMessages.hasValidPrepareQuorum(config.getId(), consensusInstance, round);
+            // end nullPredicate
+            // begin highestPreparedPredicate
+
+            Optional<Pair<Integer, String>> highestPreparedPair = highestPrepared(rcQuorum);
+            if (highestPreparedPair.isEmpty())
+                return nullPredicate;
+
+            int highestPreparedRound = highestPreparedPair.get().getPreparedRound();
+            String highestPreparedValue = highestPreparedPair.get().getPreparedValue();
+
+            Optional<String> existsPrepareQuorum = prepareMessages.hasValidPrepareQuorum(config.getId(), consensusInstance, highestPreparedRound);
 
             if (existsPrepareQuorum.isPresent()) {
-                Collection<ConsensusMessage> prepareQuorum = prepareMessages.getMessages(consensusInstance, round).values();
-
-                Optional<Pair<Integer, String>> highestPreparedPair = highestPrepared(rcQuorum);
-
-                if (highestPreparedPair.isEmpty())
-                    return nullPredicate;
-                else {
-                    int highestPreparedRound = highestPreparedPair.get().getPreparedRound();
-                    String highestPreparedValue = highestPreparedPair.get().getPreparedValue();
+                Collection<ConsensusMessage> prepareQuorum = prepareMessages.getMessages(consensusInstance, highestPreparedRound).values();
 
                     //          ∨ received a quorum of valid 〈PREPARE, λi, pr, value〉 messages such that:
                     //          (pr, value) = HighestPrepared(Qrc)
@@ -648,9 +698,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                                       m.deserializePrepareMessage().getValue().equals(highestPreparedValue));
 
                     return nullPredicate || highestPreparedPredicate;
-                }
-
             }
+            // end highestPreparedPredicate
         }
         return false;
     }
