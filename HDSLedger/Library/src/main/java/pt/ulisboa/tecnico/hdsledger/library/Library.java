@@ -119,7 +119,29 @@ public class Library {
         System.out.printf("[LIBRARY] MY BALANCE IS: %d\n", ledgerResponseBalance.getBalance());
     }
 
-    public void transfer(int amount, String destination) { }
+    public void transfer(int amount, String destinationId) {
+        int clientRequestId = this.requestId.getAndIncrement();
+
+        LedgerRequestTransfer request = new LedgerRequestTransfer(Message.Type.TRANSFER, this.config.getId(), destinationId, amount);
+        String serializedRequest = new Gson().toJson(request);
+        String signature;
+
+        try {
+            signature = DigitalSignature.sign(serializedRequest, this.config.getPrivateKeyPath());
+        }
+        catch (Exception e) {
+            throw new HDSSException(ErrorMessage.UnableToSignMessage);
+        }
+
+        LedgerRequest ledgerRequest = new LedgerRequest(this.config.getId(), Message.Type.TRANSFER, clientRequestId, serializedRequest, signature);
+        this.link.broadcast(ledgerRequest);
+
+        //System.out.printf("[LIBRARY] WAITING FOR MINIMUM SET OF RESPONSES FOR REQUEST: \n", request.getMessageId());
+        //waitForMinSetOfResponses(ledgerRequest.getRequestId());
+
+        //LedgerResponse ledgerResponse = (LedgerResponse) responses.get(clientRequestId).get(0);
+        //LedgerResponseTransfer ledgerResponseTransfer = ledgerResponse.deserializeTransfer();
+    }
 
     public void waitForMinSetOfResponses(int requestId) {
         while (!responses.containsKey(requestId) ||

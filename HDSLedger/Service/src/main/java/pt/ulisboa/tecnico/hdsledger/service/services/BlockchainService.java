@@ -50,6 +50,18 @@ public class BlockchainService implements UDPService {
         this.consensusReached = consensusReached;
     }
 
+    private LedgerResponseAppend getLedgerResponse() {
+        int consensusInstance = this.nodeService.getConsensusInstance();
+
+        LedgerResponseAppend ledgerResponse = new LedgerResponseAppend(this.selfConfig.getId(),
+                consensusInstance,
+                this.nodeService.getLastCommitedValue());
+
+        ledgerResponse.setType(Message.Type.REPLY);
+        ledgerResponse.setValues(new ArrayList<>(this.nodeService.getLedger()));
+        return ledgerResponse;
+    }
+
     public void append(LedgerRequest message) {
         ProcessConfig clientConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(message.getSenderId())).findFirst().get();
         LedgerRequestAppend ledgerRequest = message.deserializeAppend();
@@ -92,6 +104,45 @@ public class BlockchainService implements UDPService {
         clientsLink.send(message.getSenderId(), response);
     }
 
+    public void transfer(LedgerRequest message) {
+        ProcessConfig clientConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(message.getSenderId())).findFirst().get();
+        LedgerRequestTransfer ledgerRequest = message.deserializeTransfer();
+
+        if (DigitalSignature.verifySignature(message.getMessage(), message.getClientSignature(), clientConfig.getPublicKeyPath())) {
+            System.out.println("[BLOCKCHAIN SERVICE]: Signature is valid. Transferring...");
+        } else {
+            System.out.println("[BLOCKCHAIN SERVICE]: Signature is invalid");
+            return;
+        }
+
+        transferOperation(ledgerRequest);
+    }
+
+    public void transferOperation(LedgerRequestTransfer ledgerRequest) {
+        ProcessConfig sourceConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(ledgerRequest.getSenderId())).findFirst().get();
+        ProcessConfig destinationConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(ledgerRequest.getDestinationId())).findFirst().get();
+        int amount = ledgerRequest.getAmount();
+        int sourceBalance = sourceConfig.getBalance();
+        int destinationBalance = destinationConfig.getBalance();
+
+        if (sourceBalance < amount) {
+            System.out.println("[BLOCKCHAIN SERVICE]: Not enough balance to transfer");
+            return;
+        }
+
+        if (sourceBalance <= 0) {
+            System.out.println("[BLOCKCHAIN SERVICE]: Invalid amount to transfer");
+            return;
+        }
+
+        destinationConfig.setBalance(destinationBalance + amount);
+        sourceConfig.setBalance(sourceBalance - amount);
+
+        System.out.println("[BLOCKCHAIN SERVICE]: Transfer successful");
+        System.out.println("[BLOCKCHAIN SERVICE]: New balance for Source: " + sourceConfig.getId() + " is " + sourceConfig.getBalance());
+        System.out.println("[BLOCKCHAIN SERVICE]: New balance for Destination: " + destinationConfig.getId() + " is " + destinationConfig.getBalance());
+    }
+
     // this is blocking
     // receive library requests and does consensus stuff
     @Override
@@ -121,7 +172,7 @@ public class BlockchainService implements UDPService {
                                 case TRANSFER -> {
                                     LOGGER.log(Level.INFO, MessageFormat.format("{0} - BLOCKCHAIN SERVICE: Received transfer request from {1}",
                                             selfConfig.getId(), message.getSenderId()));
-                                    //transfer((LedgerRequest) message);
+                                    transfer((LedgerRequest) message);
                                 }
                             }
                             System.out.println("BLOCKCHAIN SERVICE: Finished processing message");
@@ -134,17 +185,5 @@ public class BlockchainService implements UDPService {
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-
-    private LedgerResponseAppend getLedgerResponse() {
-        int consensusInstance = this.nodeService.getConsensusInstance();
-
-        LedgerResponseAppend ledgerResponse = new LedgerResponseAppend(this.selfConfig.getId(),
-                consensusInstance,
-                this.nodeService.getLastCommitedValue());
-
-        ledgerResponse.setType(Message.Type.REPLY);
-        ledgerResponse.setValues(new ArrayList<>(this.nodeService.getLedger()));
-        return ledgerResponse;
     }
 }

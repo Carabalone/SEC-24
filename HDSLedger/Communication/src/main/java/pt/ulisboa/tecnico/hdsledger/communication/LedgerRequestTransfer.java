@@ -1,44 +1,22 @@
 package pt.ulisboa.tecnico.hdsledger.communication;
 
-import pt.ulisboa.tecnico.hdsledger.utilities.DigitalSignature;
+public class LedgerRequestTransfer extends Message {
 
-import java.security.PublicKey;
-
-public class LedgerRequestTransfer {
-    private String sourcePubKey;
-
-    private String destinationPubKey;
+    private String destinationId;
 
     private int amount;
 
-
-    public LedgerRequestTransfer(PublicKey sourcePubKey, PublicKey destinationPubKey, int amount) {
-        this.sourcePubKey = DigitalSignature.encodePublicKey(sourcePubKey);
-        this.destinationPubKey = DigitalSignature.encodePublicKey(destinationPubKey);
+    public LedgerRequestTransfer(Type type, String senderId, String destinationId, int amount) {
+        super(senderId, type);
+        this.destinationId = destinationId;
         this.amount = amount;
     }
 
-    public PublicKey getSourcePubKey() {
-        return DigitalSignature.decodePublicKey(this.sourcePubKey);
-    }
+    public String getDestinationId() { return destinationId; }
 
-    public void setSourcePubKey(PublicKey sourcePubKey) {
-        this.sourcePubKey = DigitalSignature.encodePublicKey(sourcePubKey);
-    }
+    public void setDestinationId(String destinationId) { this.destinationId = destinationId; }
 
-    public PublicKey getDestinationPubKey() {
-        return DigitalSignature.decodePublicKey(this.destinationPubKey);
-    }
+    public int getAmount() { return amount; }
 
-    public void setDestinationPubKey(PublicKey destinationPubKey) {
-        this.destinationPubKey = DigitalSignature.encodePublicKey(destinationPubKey);
-    }
-
-    public int getAmount() {
-        return amount;
-    }
-
-    public void setAmount(int amount) {
-        this.amount = amount;
-    }
+    public void setAmount(int amount) { this.amount = amount; }
 }
