@@ -97,8 +97,9 @@ public class BlockchainService implements UDPService {
             return;
         }
 
-        LedgerResponseBalance ledgerResponse = new LedgerResponseBalance(this.selfConfig.getId(),
-                Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(message.getSenderId())).findFirst().get().getBalance());
+        ProcessConfig clientToCheckConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(ledgerRequest.getClientId())).findFirst().get();
+
+        LedgerResponseBalance ledgerResponse = new LedgerResponseBalance(this.selfConfig.getId(), clientToCheckConfig.getBalance());
         String serializedResponse = new Gson().toJson(ledgerResponse);
         LedgerResponse response = new LedgerResponse(Message.Type.REPLY, Message.Type.BALANCE, selfConfig.getId(), serializedResponse, message.getRequestId());
         clientsLink.send(message.getSenderId(), response);
