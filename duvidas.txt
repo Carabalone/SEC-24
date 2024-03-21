@@ -4,3 +4,18 @@ nodes podem virar corretas/bizantinas a qualquer momento
 o pior caso de mandar pra f+1 processos onde a node correta nao consegue mandar nd podemos desconsiderar e considerar q uma node correta manda broadcast imediatamente depois de receber um pedido.
 
 broadcast de leader change ?
+
+lider verifica cada transação. Todos exceto o lider verificam os blocos.
+Temos de assinar o bloco;
+
+// temos de justificar qual das escolhas no relatório
+se vermos uma transação q n faz sentido nós podemos -> {
+    rejeitar o bloco -> {
+        Good: menos chance de dar problemas.
+        Bad: clientes vão ter que refazer as transações.
+    }
+    fazer o mesmo bloco sem a transação -> {
+        Good: salvamos as transações que estavam no bloco e não tinham nada a ver com o assunto.
+        Bad: pode abrir espaço pra vários problemas de lógica que a gente não vai ter tempo de lidar.
+    }
+}
