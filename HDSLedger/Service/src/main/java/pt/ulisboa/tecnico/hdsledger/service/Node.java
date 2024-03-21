@@ -14,7 +14,6 @@ import java.util.Arrays;
 import java.util.logging.Level;
 
 public class Node {
-
     private static final CustomLogger LOGGER = new CustomLogger(Node.class.getName());
     // Hardcoded path to files
     private static String nodesConfigPath = "src/main/resources/";

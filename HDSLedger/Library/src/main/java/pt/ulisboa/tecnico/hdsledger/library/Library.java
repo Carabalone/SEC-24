@@ -5,6 +5,7 @@ import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
 import java.io.IOException;
+import java.security.PublicKey;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,6 +16,9 @@ public class Library {
     private static final CustomLogger LOGGER = new CustomLogger(Library.class.getName());
 
     private final ProcessConfig[] nodeConfigs;
+
+    private final ProcessConfig[] clientConfigs;
+
 
     // Client identifier (self)
     private final ProcessConfig config;
@@ -33,13 +37,14 @@ public class Library {
     private List<String> blockchain = new ArrayList<>();
 
 
-    public Library(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs) {
-        this(clientConfig, nodeConfigs, true);
+    public Library(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs, ProcessConfig[] clientConfigs) {
+        this(clientConfig, nodeConfigs, clientConfigs, true);
     }
 
-    public Library(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs, boolean activateLogs) throws HDSSException {
+    public Library(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs, ProcessConfig[] clientConfigs, boolean activateLogs) throws HDSSException {
         this.config = clientConfig;
         this.nodeConfigs = nodeConfigs;
+        this.clientConfigs = clientConfigs;
 
         // Create link to communicate with nodes
         System.out.println("[LIBRARY] creating link");
@@ -93,17 +98,30 @@ public class Library {
         return blockchainValues;
     }
 
-    public void checkBalance() {
-        int clientRequestId = this.requestId.getAndIncrement();
+    public PublicKey getPublicKey(String accountId) {
+        ProcessConfig accountConfig = Arrays.stream(this.clientConfigs).filter(c -> c.getId().equals(accountId)).findFirst().get();
 
-        LedgerRequestBalance request = new LedgerRequestBalance(Message.Type.BALANCE, this.config.getId(),  this.blockchain.size());
+        PublicKey accountPubKey;
+        try {
+            accountPubKey = DigitalSignature.readPublicKey(accountConfig.getPublicKeyPath());
+        } catch (Exception e) {
+            throw new HDSSException(ErrorMessage.FailedToReadPublicKey);
+        }
+
+        return accountPubKey;
+    }
+
+    public void checkBalance(String clientId) {
+        int clientRequestId = this.requestId.getAndIncrement();
+        PublicKey clientPublicKey = getPublicKey(clientId);
+
+        LedgerRequestBalance request = new LedgerRequestBalance(Message.Type.BALANCE, this.config.getId(), clientId, clientPublicKey);
         String serializedRequest = new Gson().toJson(request);
         String signature;
 
         try {
             signature = DigitalSignature.sign(serializedRequest, this.config.getPrivateKeyPath());
-        }
-        catch (Exception e) {
+        }  catch (Exception e) {
             throw new HDSSException(ErrorMessage.UnableToSignMessage);
         }
 

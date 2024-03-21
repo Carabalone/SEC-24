@@ -14,8 +14,8 @@ public class Client {
     private static void help() {
         System.out.println("Welcome to the Serenity Ledger");
         System.out.println("Type 'append <value>' to append a string to the blockchain.");
-        System.out.println("Type 'balance' to check your balance.");
-        System.out.printf("Type 'transfer <value> <destination>' to transfer value to another client.\n");
+        System.out.println("Type 'balance <clientId>' to check your balance.");
+        System.out.printf("Type 'transfer <ammount> <destinationId>' to transfer value to another client.\n");
     }
 
     public static final void main(String[] args) throws HDSSException {
@@ -37,7 +37,7 @@ public class Client {
             System.out.println("You can start pressing commands: ");
             Client.help();
 
-            final Library library = new Library(config.get(), nodes, false);
+            final Library library = new Library(config.get(), nodes, clients, false);
             library.listen();
 
             while (true) {
@@ -60,8 +60,10 @@ public class Client {
                     }
 
                     case "balance" -> {
+                        if (terms.length < 2)
+                            System.out.printf("bad input, usage: balance <clientId>");
                         System.out.println("Sent request to check balance");
-                        library.checkBalance();
+                        library.checkBalance(terms[1]);
                     }
 
                     case "transfer" -> {

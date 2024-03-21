@@ -1,18 +1,31 @@
 package pt.ulisboa.tecnico.hdsledger.communication;
 
+import pt.ulisboa.tecnico.hdsledger.utilities.DigitalSignature;
+
+import java.security.PublicKey;
+
+
 public class LedgerRequestBalance extends Message {
-    private int knownBlockchainSize;
+    private String clientKey;
 
-    public LedgerRequestBalance(Type type, String senderId, int knownBlockchainSize) {
+    private String clientId;
+
+
+    public LedgerRequestBalance(Type type, String senderId, String clientId, PublicKey clientKey) {
         super(senderId, type);
-        this.knownBlockchainSize = knownBlockchainSize;
+        this.clientId = clientId;
+        this.clientKey = DigitalSignature.encodePublicKey(clientKey);
     }
 
-    public int getKnownBlockchainSize() {
-        return knownBlockchainSize;
+    public PublicKey getClientKey() {
+        return DigitalSignature.decodePublicKey(clientKey);
     }
 
-    public void setKnownBlockchainSize(int knownBlockchainSize) {
-        this.knownBlockchainSize = knownBlockchainSize;
+    public void setClientKey(PublicKey clientKey) {
+        this.clientKey = DigitalSignature.encodePublicKey(clientKey);
     }
+
+    public String getClientId() { return clientId; }
+
+    public void setClientId(String clientId) { this.clientId = clientId; }
 }
