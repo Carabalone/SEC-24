@@ -220,6 +220,17 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
             return;
         }
 
+        if (!justifyPrePrepare(message)) {
+            LOGGER.log(
+                    Level.INFO,
+                    MessageFormat.format(
+                            "{0} - Pre-prepare message not justified, ignoring",
+                            config.getId())
+            );
+
+            return;
+        }
+
         // Within an instance of the algorithm, each upon rule is triggered at most once
         // for any round r
         receivedPrePrepare.putIfAbsent(consensusInstance, new ConcurrentHashMap<>());
@@ -585,7 +596,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                     "[RC] Entered second predicate."
             );
 
-            if (isLeader(config.getId()) /* ^ justifyRoundChange(quorum)) */) {
+            if (isLeader(config.getId()) && justifyRoundChange(quorum)) {
 
                 LOGGER.log(Level.INFO,
                         "[RC] Entered second predicate (There is a quorum) and I'm leader"
@@ -607,6 +618,15 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 startOrRestartTimer(consensusInstance, round);
 
                 this.nodesLink.broadcast(consensusMessage);
+            } else {
+                if (isLeader(config.getId())) {
+                    LOGGER.log(Level.INFO,
+                            "[RC] I'm leader but not justifying round change");
+                    return;
+                }
+                LOGGER.log(Level.INFO,
+                        "[RC] not leader thus not doing anything"
+                );
             }
         } else {
             LOGGER.log(Level.INFO,
@@ -657,6 +677,11 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 //                .map(RoundChangeMessage::getConsensusInstance)
 //                .distinct().count() == 1;
 
+        LOGGER.log(
+                Level.INFO,
+                "[RC] Justifying Round Change"
+        );
+
         var firstObject = quorum.stream().toList().get(0);
         if (firstObject == null) {
             LOGGER.log(Level.SEVERE, "[JUSTIFY RC] SHOULD NEVER HAPPEN: quorum is empty, returning false...");
@@ -669,10 +694,19 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 .map(ConsensusMessage::deserializeRoundChangeMessage)
                 .allMatch(m -> m.getPreparedRound() == -1 && m.getPreparedValue() == null);
 
+        LOGGER.log(
+                Level.INFO,
+                "[RC] Null predicate verified, result: " + nullPredicate
+        );
+
         Optional<Pair<Integer, String>> highestPreparedPair = highestPrepared(quorum);
 
-        if (highestPreparedPair.isEmpty())
+        if (highestPreparedPair.isEmpty()) {
+            LOGGER.log(
+                    Level.INFO,
+                    "[RC] There is no Highest Prepared Pair\nJustified Round Change, result: " + nullPredicate);
             return nullPredicate;
+        }
 
         int highestPreparedRound = highestPreparedPair.get().getPreparedRound();
         String highestPreparedValue = highestPreparedPair.get().getPreparedValue();
@@ -688,9 +722,20 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                     .allMatch(m -> m.getRound() == highestPreparedRound &&
                             m.deserializePrepareMessage().getValue().equals(highestPreparedValue));
 
+            LOGGER.log(
+                    Level.INFO,
+                    MessageFormat.format("[RC] Highest Prepared Predicate verified, result: {0}", highestPreparedPredicate)
+            );
+            LOGGER.log(
+                    Level.INFO,
+                    "[RC] Justified Round Change, result: " + (nullPredicate || highestPreparedPredicate)
+            );
             return nullPredicate || highestPreparedPredicate;
         }
 
+        LOGGER.log(
+                Level.INFO,
+                "[RC] Justified Round Change, result: false");
         return false;
     }
 
