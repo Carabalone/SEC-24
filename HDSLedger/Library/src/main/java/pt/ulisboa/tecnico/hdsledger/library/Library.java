@@ -1,11 +1,9 @@
 package pt.ulisboa.tecnico.hdsledger.library;
 
 import com.google.gson.Gson;
-
 import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
-import javax.sound.midi.Soundbank;
 import java.io.IOException;
 import java.security.PublicKey;
 import java.text.MessageFormat;
@@ -13,14 +11,15 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class Library {
-
     private static final CustomLogger LOGGER = new CustomLogger(Library.class.getName());
 
-    // Nodes configs
     private final ProcessConfig[] nodeConfigs;
+
+    private final ProcessConfig[] clientConfigs;
+
+
     // Client identifier (self)
     private final ProcessConfig config;
 
@@ -28,23 +27,24 @@ public class Library {
     private final Link link;
 
     // we broadcast a request to all nodes and wait for their responses
-    private final Map<Integer, List<LedgerResponse>> responses = new ConcurrentHashMap<>();
+    private final Map<Integer, List<Message>> responses = new ConcurrentHashMap<>();
+
     // Messages sent by the client {nonce -> request}
-    private final Map<Integer, LedgerRequest> requests = new ConcurrentHashMap<>();
+    private final Map<Integer, Message> requests = new ConcurrentHashMap<>();
 
     private AtomicInteger requestId = new AtomicInteger(0);
 
     private List<String> blockchain = new ArrayList<>();
 
 
-    public Library(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs) {
-        this(clientConfig, nodeConfigs, true);
+    public Library(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs, ProcessConfig[] clientConfigs) {
+        this(clientConfig, nodeConfigs, clientConfigs, true);
     }
 
-    public Library(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs, boolean activateLogs) throws HDSSException {
-
+    public Library(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs, ProcessConfig[] clientConfigs, boolean activateLogs) throws HDSSException {
         this.config = clientConfig;
         this.nodeConfigs = nodeConfigs;
+        this.clientConfigs = clientConfigs;
 
         // Create link to communicate with nodes
         System.out.println("[LIBRARY] creating link");
@@ -52,8 +52,8 @@ public class Library {
                 activateLogs, 5000, true);
     }
 
-    private void addResponse(int requestId, LedgerResponse response) {
-        List<LedgerResponse> responses = this.responses.get(requestId);
+    private void addResponse(int requestId, Message response) {
+        List<Message> responses = this.responses.get(requestId);
         if (responses == null) {
             responses = new ArrayList<>();
             this.responses.put(requestId, responses);
@@ -63,42 +63,136 @@ public class Library {
 
     public List<String> append(String value) {
         int clientRequestId = this.requestId.getAndIncrement();
+        String signature;
 
-        LedgerRequest request = new LedgerRequest(Message.Type.APPEND, this.config.getId(), clientRequestId, value, this.blockchain.size());
-        this.link.broadcast(request);
+        try {
+            signature = DigitalSignature.sign(value, this.config.getPrivateKeyPath());
+        }
+        catch (Exception e) {
+            throw new HDSSException(ErrorMessage.UnableToSignMessage);
+        }
 
-        LedgerResponse ledgerResponse;
-        while (!responses.containsKey(clientRequestId) || (responses.containsKey(clientRequestId) && responses.get(clientRequestId).isEmpty())) {
+        LedgerRequestAppend request = new LedgerRequestAppend(Message.Type.APPEND, this.config.getId(), value, this.blockchain.size());
+        String serializedRequest = new Gson().toJson(request);
+
+        LedgerRequest ledgerRequest = new LedgerRequest(this.config.getId(), Message.Type.APPEND, clientRequestId, serializedRequest, signature);
+        this.link.broadcast(ledgerRequest);
+
+        System.out.printf("[LIBRARY] WAITING FOR MINIMUM SET OF RESPONSES FOR REQUEST: \n", ledgerRequest.getMessageId());
+        waitForMinSetOfResponses(ledgerRequest.getRequestId());
+
+        LedgerResponse ledgerResponse = (LedgerResponse) responses.get(clientRequestId).get(0);
+        LedgerResponseAppend ledgerResponseAppend = ledgerResponse.deserializeAppend();
+
+        // Add new values to the blockchain
+        List<String> blockchainValues = ledgerResponseAppend.getValues();
+
+        // we send the whole ledger from the node to the client
+        // we could send only the new values, but as of right now I don't know if there would be any
+        // consistency problems with that option, so for now we just replace the whole blockchain
+        blockchain = ledgerResponseAppend.getValues();
+        //blockchain.addAll(ledgerResponse.getValues().stream().toList());
+
+        responses.remove(clientRequestId);
+
+        return blockchainValues;
+    }
+
+    public PublicKey getPublicKey(String accountId) {
+        ProcessConfig accountConfig = Arrays.stream(this.clientConfigs).filter(c -> c.getId().equals(accountId)).findFirst().get();
+
+        PublicKey accountPubKey;
+        try {
+            accountPubKey = DigitalSignature.readPublicKey(accountConfig.getPublicKeyPath());
+        } catch (Exception e) {
+            throw new HDSSException(ErrorMessage.FailedToReadPublicKey);
+        }
+
+        return accountPubKey;
+    }
+
+    public void checkBalance(String clientId) {
+        int clientRequestId = this.requestId.getAndIncrement();
+        PublicKey clientPublicKey = getPublicKey(clientId);
+
+        LedgerRequestBalance request = new LedgerRequestBalance(Message.Type.BALANCE, this.config.getId(), clientId, clientPublicKey);
+        String serializedRequest = new Gson().toJson(request);
+        String signature;
+
+        try {
+            signature = DigitalSignature.sign(serializedRequest, this.config.getPrivateKeyPath());
+        }  catch (Exception e) {
+            throw new HDSSException(ErrorMessage.UnableToSignMessage);
+        }
+
+        LedgerRequest ledgerRequest = new LedgerRequest(this.config.getId(), Message.Type.BALANCE, clientRequestId, serializedRequest, signature);
+        this.link.broadcast(ledgerRequest);
+
+        System.out.printf("[LIBRARY] WAITING FOR MINIMUM SET OF RESPONSES FOR REQUEST: \n", request.getMessageId());
+        waitForMinSetOfResponses(ledgerRequest.getRequestId());
+
+        LedgerResponse ledgerResponse = (LedgerResponse) responses.get(clientRequestId).get(0);
+        LedgerResponseBalance ledgerResponseBalance = ledgerResponse.deserializeBalance();
+        ledgerResponseBalance.getBalance();
+        System.out.printf("[LIBRARY] MY BALANCE IS: %d\n", ledgerResponseBalance.getBalance());
+    }
+
+    public void transfer(int amount, String destinationId) {
+        int clientRequestId = this.requestId.getAndIncrement();
+
+        LedgerRequestTransfer request = new LedgerRequestTransfer(Message.Type.TRANSFER, this.config.getId(), destinationId, amount);
+        String serializedRequest = new Gson().toJson(request);
+        String signature;
+
+        try {
+            signature = DigitalSignature.sign(serializedRequest, this.config.getPrivateKeyPath());
+        }
+        catch (Exception e) {
+            throw new HDSSException(ErrorMessage.UnableToSignMessage);
+        }
+
+        LedgerRequest ledgerRequest = new LedgerRequest(this.config.getId(), Message.Type.TRANSFER, clientRequestId, serializedRequest, signature);
+        this.link.broadcast(ledgerRequest);
+
+        //System.out.printf("[LIBRARY] WAITING FOR MINIMUM SET OF RESPONSES FOR REQUEST: \n", request.getMessageId());
+        //waitForMinSetOfResponses(ledgerRequest.getRequestId());
+
+        //LedgerResponse ledgerResponse = (LedgerResponse) responses.get(clientRequestId).get(0);
+        //LedgerResponseTransfer ledgerResponseTransfer = ledgerResponse.deserializeTransfer();
+    }
+
+    public void waitForMinSetOfResponses(int requestId) {
+        while (!responses.containsKey(requestId) ||
+                (responses.containsKey(requestId) && responses.get(requestId).isEmpty()) ||
+                responses.get(requestId).size() < (nodeConfigs.length / 3 + 1)) {
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
-
-        ledgerResponse = responses.get(clientRequestId).get(0);
-
-        // Add new values to the blockchain
-        List<String> blockchainValues = ledgerResponse.getValues();
-
-        // we send the whole ledger from the node to the client
-        // we could send only the new values, but as of right now I don't know if there would be any
-        // consistency problems with that option, so for now we just replace the whole blockchain
-        blockchain = ledgerResponse.getValues();
-        //blockchain.addAll(ledgerResponse.getValues().stream().toList());
-
-        responses.remove(clientRequestId);
-
-        // log responses after removal
-
-        return blockchainValues;
     }
 
-    public void ping() {
-        System.out.println("Broadcasting ping");
-        link.broadcast(new Message(config.getId(), Message.Type.PING));
+    public void handleAppendRequest(LedgerResponse response) {
+        addResponse(response.getRequestId(), response);
+
+        // there is a delay here. We add the response and wee need to wait until the value is actually added by the append
+        // method that is waiting for the response to be added.
+        // maybe we should refactor this.
+        try {
+            Thread.sleep(150); // just for debug purposes
+        }   catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        //System.out.println("LIBRARY: Added values to the blockhain: " + response.getValues().get(response.getValues().size() - 1));
+        System.out.printf("LIBRARY: Blockchain: %s\n", blockchain);
     }
 
+    public void handleBalanceRequest(LedgerResponse response) {
+        addResponse(response.getRequestId(), response);
+    }
+
+    public void handleTransferRequest(LedgerResponse response) { }
 
     /*
     *  this listen to responses from the blockchain, not from the client
@@ -121,19 +215,13 @@ public class Library {
                                         config.getId(), message.getSenderId()));
 
                                 LOGGER.log(Level.INFO, MessageFormat.format("Message content: {0}", message.getSenderId(), message.getType()));
+
                                 if (message instanceof LedgerResponse) {
                                     LedgerResponse response = (LedgerResponse) message;
-                                    addResponse(response.getRequestId(), response);
-                                    // there is a delay here. We add the response and wee need to wait until the value is actually added by the append
-                                    // method that is waiting for the response to be added.
-                                    // maybe we should refactor this.
-                                    try {
-                                        Thread.sleep(150); // just for debug purposes
-                                    }   catch (InterruptedException e) {
-                                        e.printStackTrace();
-                                    }
-                                    System.out.println("LIBRARY: Added values to the blockhain: " + response.getValues().get(response.getValues().size() - 1));
-                                    System.out.printf("LIBRARY: Blockchain: %s\n", blockchain);
+
+                                    if (response.getTypeOfSerializedMessage() == Message.Type.APPEND) handleAppendRequest(response);
+                                    if (response.getTypeOfSerializedMessage() == Message.Type.BALANCE) handleBalanceRequest(response);
+                                    if (response.getTypeOfSerializedMessage() == Message.Type.TRANSFER) handleTransferRequest(response);
                                 }
                             }
 

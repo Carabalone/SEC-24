@@ -10,6 +10,7 @@ import java.util.logging.Logger;
 
 import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
+import pt.ulisboa.tecnico.hdsledger.service.Node;
 import pt.ulisboa.tecnico.hdsledger.service.models.InstanceInfo;
 import pt.ulisboa.tecnico.hdsledger.service.models.MessageBucket;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
@@ -19,7 +20,7 @@ import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 
 import javax.swing.text.html.Option;
 
-public class NodeService implements UDPService {
+public class NodeService implements UDPService, HDSTimer.TimerListener {
 
     private static final CustomLogger LOGGER = new CustomLogger(NodeService.class.getName());
     // Nodes configurations
@@ -58,9 +59,8 @@ public class NodeService implements UDPService {
 
     private ArrayList<String> lastCommitedValue = new ArrayList<>();
 
-    // ConsensusInsatance ->
-    private Map<Integer, Boolean> hasAlreadyEnteredSet;
-    private Timer timer = null;
+    // consensusInstance -> timer
+    private Map<Integer, HDSTimer> timers = new ConcurrentHashMap<>();
 
     // used for message delay failure type
     private int messageDelayCounter = 0;
@@ -77,6 +77,11 @@ public class NodeService implements UDPService {
         this.prepareMessages = new MessageBucket(nodesConfig.length);
         this.commitMessages = new MessageBucket(nodesConfig.length);
         this.roundChangeMessages = new MessageBucket(nodesConfig.length);
+    }
+
+    @Override
+    public void onTimerExpired() {
+        uponTimerExpire();
     }
 
     public ProcessConfig getConfig() {
@@ -166,20 +171,15 @@ public class NodeService implements UDPService {
                     MessageFormat.format("{0} - Node is not leader, waiting for PRE-PREPARE message", config.getId()));
         }
 
-        startTimer();
+        startOrRestartTimer(localConsensusInstance, 1);
     }
 
-    public void startTimer() {
-        if (timer != null)
-            timer.cancel();
-        timer = new Timer();
-
-        timer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                uponTimerExpire();
-            }
-        }, 5000);
+    private void startOrRestartTimer(int instance, int round) {
+        HDSTimer timer = timers.putIfAbsent(instance, new HDSTimer(instance));
+        if (timer == null)
+            timer = timers.get(instance);
+        timer.subscribe(config.getId(), this);
+        timer.startOrRestart(round);
     }
 
     /*
@@ -241,7 +241,7 @@ public class NodeService implements UDPService {
                 .setReplyToMessageId(senderMessageId)
                 .build();
 
-        startTimer();
+        startOrRestartTimer(consensusInstance, round);
         this.nodesLink.broadcast(consensusMessage);
     }
 
@@ -259,6 +259,10 @@ public class NodeService implements UDPService {
         PrepareMessage prepareMessage = message.deserializePrepareMessage();
 
         String value = prepareMessage.getValue();
+
+        // ignore messages from previous rounds
+        if (message.getRound() < instanceInfo.get(this.consensusInstance.get()).getCurrentRound())
+            return;
 
         LOGGER.log(Level.INFO,
                 MessageFormat.format(
@@ -347,8 +351,6 @@ public class NodeService implements UDPService {
         }
     }
 
-
-
     /*
      * Handle commit messages and decide if there is a valid quorum
      *
@@ -362,6 +364,10 @@ public class NodeService implements UDPService {
         LOGGER.log(Level.INFO,
                 MessageFormat.format("{0} - Received COMMIT message from {1}: Consensus Instance {2}, Round {3}",
                         config.getId(), message.getSenderId(), consensusInstance, round));
+
+        // ignore messages from previous rounds
+        if (message.getRound() < instanceInfo.get(this.consensusInstance.get()).getCurrentRound())
+            return;
 
         commitMessages.addMessage(message);
 
@@ -399,7 +405,11 @@ public class NodeService implements UDPService {
 
         if (commitValue.isPresent() && instance.getCommittedRound() < round) {
 
-            timer.cancel();
+            // stop timer
+            HDSTimer timer = timers.get(consensusInstance);
+            if (timer != null) {
+                timer.stop();
+            }
 
             instance = this.instanceInfo.get(consensusInstance);
             instance.setCommittedRound(round);
@@ -475,7 +485,7 @@ public class NodeService implements UDPService {
         LOGGER.log(Level.WARNING,
                 MessageFormat.format("local Instance in Timer {0}", localInstance));
 
-        startTimer();
+        startOrRestartTimer(localInstance, round);
 
         RoundChangeMessage roundChangeMessage = new RoundChangeMessage(localInstance, round,
                                                 existingConsensus.getPreparedRound(),
@@ -513,6 +523,8 @@ public class NodeService implements UDPService {
         Collection<ConsensusMessage> messages = roundChangeMessages.getMessages(consensusInstance, round).values()
                 .stream().filter(m -> m.getRound() > instance.getCurrentRound()).toList();
 
+        // TODO: verify round & instance
+        // TODO:
         if (messages.size() == maxFaults() + 1) {
 
             LOGGER.log(Level.INFO,
@@ -526,16 +538,16 @@ public class NodeService implements UDPService {
                 //  set timeri to running and expire after t(ri)
                 //  broadcast 〈ROUND-CHANGE, λi, ri, pri, pvi〉
 
-                InstanceInfo localInstance = instanceInfo.get(getConsensusInstance());
-                localInstance.setCurrentRound(selected.get().getRound());
+                instance.setCurrentRound(selected.get().getRound());
+
 
                 LOGGER.log(Level.INFO, MessageFormat.format(
-                        "[RC] Got MIN round rj > ri: {0}", localInstance.getCurrentRound()
+                        "[RC] Got MIN round rj > ri: {0}", instance.getCurrentRound()
                 ));
 
                 updateLeader();
 
-                startTimer();
+                startOrRestartTimer(consensusInstance, instance.getCurrentRound());
 
                 // WARNING: idk if instance should be the local instance instead
                 RoundChangeMessage roundChangeMessage = new RoundChangeMessage(consensusInstance, selected.get().getRound(),
@@ -588,7 +600,7 @@ public class NodeService implements UDPService {
 
                 ConsensusMessage consensusMessage = this.createConsensusMessage(value, consensusInstance, round);
 
-                startTimer();
+                startOrRestartTimer(consensusInstance, round);
 
                 this.nodesLink.broadcast(consensusMessage);
             }
@@ -607,6 +619,116 @@ public class NodeService implements UDPService {
         uponRoundChangeSet(message);
         uponRoundChangeQuorum(message);
 
+    }
+
+    // assumes the quorum exists and receives it
+    private boolean justifyRoundChange(Collection<ConsensusMessage> quorum) {
+        // overview
+        // receives: Quorum<RoundChangeMessage>
+        // return
+        //      ∀〈ROUND-CHANGE, λi, ri, prj , pvj 〉 ∈ Qrc : prj = ⊥ ∧ pvj = ⊥
+        //      ∨ received a quorum of valid 〈PREPARE, λi, pr, pv〉 messages such that:
+        //      (pr, pv) = HighestPrepared(Qrc)
+
+//        boolean allTheSame = quorum.stream()
+//                .map(ConsensusMessage::deserializeRoundChangeMessage)
+//                .map(RoundChangeMessage::getConsensusInstance)
+//                .distinct().count() == 1;
+
+        var firstObject = quorum.stream().toList().get(0);
+        if (firstObject == null) {
+            LOGGER.log(Level.SEVERE, "[JUSTIFY RC] SHOULD NEVER HAPPEN: quorum is empty, returning false...");
+            return false;
+        }
+
+        int instance = firstObject.getConsensusInstance();
+
+        boolean nullPredicate = quorum.stream()
+                .map(ConsensusMessage::deserializeRoundChangeMessage)
+                .allMatch(m -> m.getPreparedRound() == -1 && m.getPreparedValue() == null);
+
+        Optional<Pair<Integer, String>> highestPreparedPair = highestPrepared(quorum);
+
+        if (highestPreparedPair.isEmpty())
+            return nullPredicate;
+
+        int highestPreparedRound = highestPreparedPair.get().getPreparedRound();
+        String highestPreparedValue = highestPreparedPair.get().getPreparedValue();
+
+        Optional<String> existsPrepareQuorum = prepareMessages.hasValidPrepareQuorum(config.getId(), instance, highestPreparedRound);
+
+        if (existsPrepareQuorum.isPresent()) {
+            Collection<ConsensusMessage> prepareQuorum = prepareMessages.getMessages(instance, highestPreparedRound).values();
+
+            //          ∨ received a quorum of valid 〈PREPARE, λi, pr, value〉 messages such that:
+            //          (pr, value) = HighestPrepared(Qrc)
+            boolean highestPreparedPredicate = prepareQuorum.stream()
+                    .allMatch(m -> m.getRound() == highestPreparedRound &&
+                            m.deserializePrepareMessage().getValue().equals(highestPreparedValue));
+
+            return nullPredicate || highestPreparedPredicate;
+        }
+
+        return false;
+    }
+
+    private boolean justifyPrePrepare(ConsensusMessage message) {
+        // overview
+        // return (
+        //      round = 1 ∨
+        //      received a quorum Qrc of valid 〈ROUND-CHANGE, λi, round, prj , pvj〉 messages
+        //      such that:
+        //          ∀〈ROUND-CHANGE, λi, round, prj , pvj 〉 ∈ Qrc : prj = ⊥ ∧ prj = ⊥
+        //          ∨ received a quorum of valid 〈PREPARE, λi, pr, value〉 messages such that:
+        //          (pr, value) = HighestPrepared(Qrc)
+
+        int consensusInstance = message.getConsensusInstance();
+        int round = message.getRound();
+
+        // return round = 1 or
+        if (round == 1)
+            return true;
+
+
+        // begin nullPredicate
+        // or received a quorum Qrc of valid 〈ROUND-CHANGE, λi, round, prj , pvj〉 messages
+        Optional<String> existsRoundChangeQuorum = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
+
+        if (existsRoundChangeQuorum.isPresent()) {
+            Collection<ConsensusMessage> rcQuorum = roundChangeMessages.getMessages(consensusInstance, round).values();
+
+            // such that ∀〈ROUND-CHANGE, λi, round, prj , pvj 〉 ∈ Qrc : prj = ⊥ ∧ prj = ⊥
+
+            boolean nullPredicate = rcQuorum.stream()
+                    .map(ConsensusMessage::deserializeRoundChangeMessage)
+                    .allMatch(m -> (m.getPreparedRound() == -1 && m.getPreparedValue() == null));
+
+            // end nullPredicate
+            // begin highestPreparedPredicate
+
+            Optional<Pair<Integer, String>> highestPreparedPair = highestPrepared(rcQuorum);
+            if (highestPreparedPair.isEmpty())
+                return nullPredicate;
+
+            int highestPreparedRound = highestPreparedPair.get().getPreparedRound();
+            String highestPreparedValue = highestPreparedPair.get().getPreparedValue();
+
+            Optional<String> existsPrepareQuorum = prepareMessages.hasValidPrepareQuorum(config.getId(), consensusInstance, highestPreparedRound);
+
+            if (existsPrepareQuorum.isPresent()) {
+                Collection<ConsensusMessage> prepareQuorum = prepareMessages.getMessages(consensusInstance, highestPreparedRound).values();
+
+                    //          ∨ received a quorum of valid 〈PREPARE, λi, pr, value〉 messages such that:
+                    //          (pr, value) = HighestPrepared(Qrc)
+                    boolean highestPreparedPredicate = prepareQuorum.stream()
+                            .allMatch(m -> m.getRound() == highestPreparedRound &&
+                                      m.deserializePrepareMessage().getValue().equals(highestPreparedValue));
+
+                    return nullPredicate || highestPreparedPredicate;
+            }
+            // end highestPreparedPredicate
+        }
+        return false;
     }
 
     private long getTimespanMillis(int round) {

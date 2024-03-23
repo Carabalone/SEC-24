@@ -1,37 +1,33 @@
 package pt.ulisboa.tecnico.hdsledger.communication;
 
+import com.google.gson.Gson;
+
 public class LedgerRequest extends Message {
 
-    // Message identifier
-    private int requestId;
-    // Stored blockchain size
-    private int knownBlockchainSize;
-    // Value to append to the blockchain
-    private String value;
-    // Signature of value with client's private key
+    // Serialized request
+    private String message;
+
     private String clientSignature;
 
-    public LedgerRequest(Type type, String senderId, int requestId, String value, int knownBlockchainSize) {
+    private int requestId;
+
+    public LedgerRequest(String senderId, Type type, int requestId, String message, String signature) {
         super(senderId, type);
-        this.value = value;
         this.requestId = requestId;
-        this.knownBlockchainSize = knownBlockchainSize;
+        this.message = message;
+        this.clientSignature = signature;
     }
 
-    public String getValue() {
-        return value;
+    public LedgerRequestAppend deserializeAppend() {
+        return new Gson().fromJson(message, LedgerRequestAppend.class);
     }
 
-    public void setValue(String value) {
-        this.value = value;
+    public LedgerRequestBalance deserializeBalance() {
+        return new Gson().fromJson(message, LedgerRequestBalance.class);
     }
 
-    public String getClientSignature() {
-        return clientSignature;
-    }
-
-    public void setClientSignature(String clientSignature) {
-        this.clientSignature = clientSignature;
+    public LedgerRequestTransfer deserializeTransfer() {
+        return new Gson().fromJson(message, LedgerRequestTransfer.class);
     }
 
     public int getRequestId() {
@@ -42,11 +38,19 @@ public class LedgerRequest extends Message {
         this.requestId = requestId;
     }
 
-    public int getKnownBlockchainSize() {
-        return knownBlockchainSize;
+    public String getMessage() {
+        return message;
     }
 
-    public void setKnownBlockchainSize(int knownBlockchainSize) {
-        this.knownBlockchainSize = knownBlockchainSize;
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+    public String getClientSignature() {
+        return clientSignature;
+    }
+
+    public void setClientSignature(String clientSignature) {
+        this.clientSignature = clientSignature;
     }
 }

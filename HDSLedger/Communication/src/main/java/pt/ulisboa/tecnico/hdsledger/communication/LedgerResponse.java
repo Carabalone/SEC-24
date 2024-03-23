@@ -1,41 +1,51 @@
 package pt.ulisboa.tecnico.hdsledger.communication;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
+import com.google.gson.Gson;
 
 public class LedgerResponse extends Message {
+    private String message;
 
-    // Consensus instance when value was decided
-    private int consensusInstance;
-    // New blockchain values
-    private ArrayList<String> values;
+    private Type typeOfSerializedMessage;
+
     private int requestId;
 
-    public LedgerResponse(String senderId, int consensusInstance, ArrayList<String> values, int requestId) {
-        super(senderId, Type.REPLY);
-        this.consensusInstance = consensusInstance;
-        this.values = values;
+
+    public LedgerResponse(Type type, Type typeOfSerializedMessage, String senderId, String message, int requestId) {
+        super(senderId, type);
+        this.message = message;
+        this.typeOfSerializedMessage = typeOfSerializedMessage;
         this.requestId = requestId;
     }
 
-    public ArrayList<String> getValues() {
-        return values;
+    public LedgerResponseAppend deserializeAppend() {
+        return new Gson().fromJson(this.getMessage(), LedgerResponseAppend.class);
     }
 
-    public void setValues(ArrayList<String> values) {
-        this.values = values;
-    }
-
-    public int getConsensusInstance() {
-        return consensusInstance;
-    }
-
-    public void setConsensusInstance(int consensusInstance) {
-        this.consensusInstance = consensusInstance;
+    public LedgerResponseBalance deserializeBalance() {
+        return new Gson().fromJson(this.getMessage(), LedgerResponseBalance.class);
     }
 
     public int getRequestId() {
         return requestId;
+    }
+
+    public void setRequestId(int requestId) {
+        this.requestId = requestId;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+    public Type getTypeOfSerializedMessage() {
+        return typeOfSerializedMessage;
+    }
+
+    public void setTypeOfSerializedMessage(Type typeOfSerializedMessage) {
+        this.typeOfSerializedMessage = typeOfSerializedMessage;
     }
 }

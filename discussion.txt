@@ -1,0 +1,9 @@
+TODO: verify round & instance in set
+TODO: forçar só ter uma instancia do consenso de uma vez
+o lider só propõe se nao tiver fazendo uma instancia, mas a gnt deveria fazer pra geral.
+guardar e propor o valor se tiver currently fazendo uma instancia do consenso.
+
+botar justifications na mensagem ao inves de ver as minhas no round change.
+um timer pra cada instância
+clients só podem mentir ser outros, mas já resolvemos eplas signatures
+
