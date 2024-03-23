@@ -575,11 +575,15 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
         // upon receiving a quorum Qrc of valid <ROUND-CHANGE, λi, ri, _ , _ > messages such
         // that leader(λi, ri) = pi ∧ JustifyRoundChange(Qrc) do
-        Optional<String> existsRoundChangeQuorum = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
+        boolean existsRoundChangeQuorum = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
 
-        if (existsRoundChangeQuorum.isPresent()) {
+        if (existsRoundChangeQuorum) {
             Collection<ConsensusMessage> quorum = roundChangeMessages.getMessages(consensusInstance, round).values();
 
+            LOGGER.log(
+                    Level.INFO,
+                    "[RC] Entered second predicate."
+            );
 
             if (isLeader(config.getId()) /* ^ justifyRoundChange(quorum)) */) {
 
@@ -603,6 +607,24 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 startOrRestartTimer(consensusInstance, round);
 
                 this.nodesLink.broadcast(consensusMessage);
+            }
+        } else {
+            LOGGER.log(Level.INFO,
+                    "[RC] Entered second predicate (There is no quorum)."
+            );
+
+            if (isLeader(config.getId())) {
+
+                LOGGER.log(Level.INFO,
+                        "[RC] lets see what messages we got in the quorum..."
+                );
+                Collection<ConsensusMessage> quorum = roundChangeMessages.getMessages(consensusInstance, round).values();
+
+                for (ConsensusMessage m : quorum) {
+                    LOGGER.log(Level.INFO,
+                            MessageFormat.format("[RC] Quorum message: {0}", m.getMessage())
+                    );
+                }
             }
         }
     }
@@ -692,9 +714,9 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
         // begin nullPredicate
         // or received a quorum Qrc of valid 〈ROUND-CHANGE, λi, round, prj , pvj〉 messages
-        Optional<String> existsRoundChangeQuorum = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
+        boolean existsRoundChangeQuorum = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
 
-        if (existsRoundChangeQuorum.isPresent()) {
+        if (existsRoundChangeQuorum) {
             Collection<ConsensusMessage> rcQuorum = roundChangeMessages.getMessages(consensusInstance, round).values();
 
             // such that ∀〈ROUND-CHANGE, λi, round, prj , pvj 〉 ∈ Qrc : prj = ⊥ ∧ prj = ⊥
@@ -785,14 +807,16 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
                                 case COMMIT -> uponCommit((ConsensusMessage) message);
 
-                                case ACK ->
-                                    LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received ACK message from {1}",
-                                            config.getId(), message.getSenderId()));
+                                case ACK ->{
+//                                    LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received ACK message from {1}",
+//                                            config.getId(), message.getSenderId()));
+                                }
 
-                                case IGNORE ->
-                                    LOGGER.log(Level.INFO,
-                                            MessageFormat.format("IGNORE from {1}",
-                                                    config.getId(), message.getSenderId()));
+                                case IGNORE -> {
+//                                    LOGGER.log(Level.INFO,
+//                                            MessageFormat.format("IGNORE from {1}",
+//                                                    config.getId(), message.getSenderId()));
+                                }
 
                                 case ROUND_CHANGE -> uponRoundChange((ConsensusMessage) message);
 
