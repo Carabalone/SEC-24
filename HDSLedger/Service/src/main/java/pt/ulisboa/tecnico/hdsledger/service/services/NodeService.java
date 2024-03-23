@@ -211,6 +211,15 @@ public class NodeService implements UDPService {
         // Set instance value
         this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));
 
+        // ignore messages from previous rounds
+        if (message.getRound() < instanceInfo.get(consensusInstance).getCurrentRound()) {
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format(
+                            "[PRE-PREPARE] Received Round {0} but round is lower than current round {1}",
+                            round, instanceInfo.get(consensusInstance).getCurrentRound()));
+            return;
+        }
+
         // Within an instance of the algorithm, each upon rule is triggered at most once
         // for any round r
         receivedPrePrepare.putIfAbsent(consensusInstance, new ConcurrentHashMap<>());
@@ -278,6 +287,15 @@ public class NodeService implements UDPService {
         // Set instance values
         this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));
         InstanceInfo instance = this.instanceInfo.get(consensusInstance);
+
+        // ignore messages from previous rounds
+        if (message.getRound() < instance.getCurrentRound()) {
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format(
+                            "[PREPARE] Received Round {0} but round is lower than current round {1}",
+                            round, instance.getCurrentRound()));
+            return;
+        }
 
         // Within an instance of the algorithm, each upon rule is triggered at most once
         // for any round r
@@ -348,6 +366,15 @@ public class NodeService implements UDPService {
         commitMessages.addMessage(message);
 
         InstanceInfo instance = this.instanceInfo.get(consensusInstance);
+
+        // ignore messages from previous rounds
+        if (instance == null || message.getRound() < instance.getCurrentRound()) {
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format(
+                            "[COMMIT] Received Round {0} but round is lower than current round {1}",
+                            round, instance.getCurrentRound()));
+            return;
+        }
 
         if (instance == null) {
             // Should never happen because only receives commit as a response to a prepare message
