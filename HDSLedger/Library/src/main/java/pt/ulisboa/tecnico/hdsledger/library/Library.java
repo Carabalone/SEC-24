@@ -63,19 +63,24 @@ public class Library {
 
     public List<String> append(String value) {
         int clientRequestId = this.requestId.getAndIncrement();
-        String signature;
+        String valueSignature, requestSignature;
 
         try {
-            signature = DigitalSignature.sign(value, this.config.getPrivateKeyPath());
-        }
-        catch (Exception e) {
+            valueSignature = DigitalSignature.sign(value, this.config.getPrivateKeyPath());
+        } catch (Exception e) {
             throw new HDSSException(ErrorMessage.UnableToSignMessage);
         }
 
-        LedgerRequestAppend request = new LedgerRequestAppend(Message.Type.APPEND, this.config.getId(), value, this.blockchain.size());
+        LedgerRequestAppend request = new LedgerRequestAppend(Message.Type.APPEND, this.config.getId(), value, this.blockchain.size(), valueSignature);
         String serializedRequest = new Gson().toJson(request);
 
-        LedgerRequest ledgerRequest = new LedgerRequest(this.config.getId(), Message.Type.APPEND, clientRequestId, serializedRequest, signature);
+        try {
+            requestSignature = DigitalSignature.sign(serializedRequest, this.config.getPrivateKeyPath());
+        } catch (Exception e) {
+            throw new HDSSException(ErrorMessage.UnableToSignMessage);
+        }
+
+        LedgerRequest ledgerRequest = new LedgerRequest(this.config.getId(), Message.Type.APPEND, clientRequestId, serializedRequest, requestSignature);
         this.link.broadcast(ledgerRequest);
 
         System.out.printf("[LIBRARY] WAITING FOR MINIMUM SET OF RESPONSES FOR REQUEST: \n", ledgerRequest.getMessageId());
@@ -98,6 +103,7 @@ public class Library {
         return blockchainValues;
     }
 
+    // Mandar email pro Sidnei pq o enunciado n faz sentido querer a public key do destino
     public PublicKey getPublicKey(String accountId) {
         ProcessConfig accountConfig = Arrays.stream(this.clientConfigs).filter(c -> c.getId().equals(accountId)).findFirst().get();
 
@@ -111,6 +117,7 @@ public class Library {
         return accountPubKey;
     }
 
+    // Pensar melhor no caso bizantino
     public void checkBalance(String clientId) {
         int clientRequestId = this.requestId.getAndIncrement();
         PublicKey clientPublicKey = getPublicKey(clientId);
@@ -134,31 +141,42 @@ public class Library {
         LedgerResponse ledgerResponse = (LedgerResponse) responses.get(clientRequestId).get(0);
         LedgerResponseBalance ledgerResponseBalance = ledgerResponse.deserializeBalance();
         ledgerResponseBalance.getBalance();
-        System.out.printf("[LIBRARY] MY BALANCE IS: %d\n", ledgerResponseBalance.getBalance());
+        System.out.printf("[LIBRARY] Balance of clientId %s: is %d\n", clientId, ledgerResponseBalance.getBalance());
     }
 
     public void transfer(int amount, String destinationId) {
         int clientRequestId = this.requestId.getAndIncrement();
-
-        LedgerRequestTransfer request = new LedgerRequestTransfer(Message.Type.TRANSFER, this.config.getId(), destinationId, amount);
-        String serializedRequest = new Gson().toJson(request);
-        String signature;
+        String requestSignature, amountSignature;
 
         try {
-            signature = DigitalSignature.sign(serializedRequest, this.config.getPrivateKeyPath());
-        }
-        catch (Exception e) {
+            amountSignature = DigitalSignature.sign(String.valueOf(amount), this.config.getPrivateKeyPath());
+        } catch (Exception e) {
             throw new HDSSException(ErrorMessage.UnableToSignMessage);
         }
 
-        LedgerRequest ledgerRequest = new LedgerRequest(this.config.getId(), Message.Type.TRANSFER, clientRequestId, serializedRequest, signature);
+        LedgerRequestTransfer request = new LedgerRequestTransfer(Message.Type.TRANSFER, this.config.getId(), destinationId, amount, amountSignature);
+        String serializedRequest = new Gson().toJson(request);
+
+        try {
+            requestSignature = DigitalSignature.sign(serializedRequest, this.config.getPrivateKeyPath());
+        } catch (Exception e) {
+            throw new HDSSException(ErrorMessage.UnableToSignMessage);
+        }
+
+        LedgerRequest ledgerRequest = new LedgerRequest(this.config.getId(), Message.Type.TRANSFER, clientRequestId, serializedRequest, requestSignature);
         this.link.broadcast(ledgerRequest);
 
-        //System.out.printf("[LIBRARY] WAITING FOR MINIMUM SET OF RESPONSES FOR REQUEST: \n", request.getMessageId());
-        //waitForMinSetOfResponses(ledgerRequest.getRequestId());
+        System.out.printf("[LIBRARY] WAITING FOR MINIMUM SET OF RESPONSES FOR REQUEST: \n", request.getMessageId());
+        waitForMinSetOfResponses(ledgerRequest.getRequestId());
 
-        //LedgerResponse ledgerResponse = (LedgerResponse) responses.get(clientRequestId).get(0);
-        //LedgerResponseTransfer ledgerResponseTransfer = ledgerResponse.deserializeTransfer();
+        LedgerResponse ledgerResponse = (LedgerResponse) responses.get(clientRequestId).get(0);
+        LedgerResponseTransfer ledgerResponseTransfer = ledgerResponse.deserializeTransfer();
+        int sourceBalance = ledgerResponseTransfer.getSourceBalance();
+        int destinationBalance = ledgerResponseTransfer.getDestinationBalance();
+
+        System.out.println("[LIBRARY] Transferred " + amount + " to " + destinationId);
+        System.out.printf("[LIBRARY] My balance: %d\n", sourceBalance);
+        System.out.printf("[LIBRARY] Destination Balance: %d\n", destinationBalance);
     }
 
     public void waitForMinSetOfResponses(int requestId) {
@@ -188,11 +206,12 @@ public class Library {
         System.out.printf("LIBRARY: Blockchain: %s\n", blockchain);
     }
 
+    // Esses 2 handles tao no fds aqui, no futuro pode fazer sentido separar mas 99% de certeza que nao
     public void handleBalanceRequest(LedgerResponse response) {
         addResponse(response.getRequestId(), response);
     }
 
-    public void handleTransferRequest(LedgerResponse response) { }
+    public void handleTransferRequest(LedgerResponse response) { addResponse(response.getRequestId(), response);}
 
     /*
     *  this listen to responses from the blockchain, not from the client
@@ -216,13 +235,11 @@ public class Library {
 
                                 LOGGER.log(Level.INFO, MessageFormat.format("Message content: {0}", message.getSenderId(), message.getType()));
 
-                                if (message instanceof LedgerResponse) {
-                                    LedgerResponse response = (LedgerResponse) message;
+                                LedgerResponse response = (LedgerResponse) message;
 
-                                    if (response.getTypeOfSerializedMessage() == Message.Type.APPEND) handleAppendRequest(response);
-                                    if (response.getTypeOfSerializedMessage() == Message.Type.BALANCE) handleBalanceRequest(response);
-                                    if (response.getTypeOfSerializedMessage() == Message.Type.TRANSFER) handleTransferRequest(response);
-                                }
+                                if (response.getTypeOfSerializedMessage() == Message.Type.APPEND) handleAppendRequest(response);
+                                if (response.getTypeOfSerializedMessage() == Message.Type.BALANCE) handleBalanceRequest(response);
+                                if (response.getTypeOfSerializedMessage() == Message.Type.TRANSFER) handleTransferRequest(response);
                             }
 
                             default -> {

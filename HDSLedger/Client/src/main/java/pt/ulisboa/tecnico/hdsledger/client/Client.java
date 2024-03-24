@@ -9,13 +9,14 @@ import java.util.Scanner;
 
 public class Client {
     private static final String nodePath = "../Service/src/main/resources/";
+
     private static final String clientPath = "src/main/resources/";
 
     private static void help() {
         System.out.println("Welcome to the Serenity Ledger");
         System.out.println("Type 'append <value>' to append a string to the blockchain.");
         System.out.println("Type 'balance <clientId>' to check your balance.");
-        System.out.printf("Type 'transfer <ammount> <destinationId>' to transfer value to another client.\n");
+        System.out.println("Type 'transfer <ammount> <destinationId>' to transfer value to another client.");
     }
 
     public static final void main(String[] args) throws HDSSException {

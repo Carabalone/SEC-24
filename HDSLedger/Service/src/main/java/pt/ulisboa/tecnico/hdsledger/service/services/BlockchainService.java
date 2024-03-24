@@ -2,9 +2,7 @@ package pt.ulisboa.tecnico.hdsledger.service.services;
 
 import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.communication.*;
-import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
-import pt.ulisboa.tecnico.hdsledger.utilities.DigitalSignature;
-import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
+import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
 import java.io.IOException;
 import java.text.MessageFormat;
@@ -54,8 +52,7 @@ public class BlockchainService implements UDPService {
         int consensusInstance = this.nodeService.getConsensusInstance();
 
         LedgerResponseAppend ledgerResponse = new LedgerResponseAppend(this.selfConfig.getId(),
-                consensusInstance,
-                this.nodeService.getLastCommitedValue());
+                consensusInstance, this.nodeService.getLastCommitedValue());
 
         ledgerResponse.setType(Message.Type.REPLY);
         ledgerResponse.setValues(new ArrayList<>(this.nodeService.getLedger()));
@@ -66,23 +63,18 @@ public class BlockchainService implements UDPService {
         ProcessConfig clientConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(message.getSenderId())).findFirst().get();
         LedgerRequestAppend ledgerRequest = message.deserializeAppend();
 
-        if (DigitalSignature.verifySignature(ledgerRequest.getValue(), message.getClientSignature(), clientConfig.getPublicKeyPath())) {
-            System.out.println("[BLOCKCHAIN SERVICE]: Signature is valid. Starting consensus...");
-            this.nodeService.startConsensus(ledgerRequest.getValue());
-        } else {
-            System.out.println("[BLOCKCHAIN SERVICE]: Signature is invalid");
-            return;
-        }
+        if (!DigitalSignature.verifySignature(message.getMessage(), message.getClientSignature(), clientConfig.getPublicKeyPath()))
+            throw new HDSSException(ErrorMessage.InvalidSignature);
 
+        if (!DigitalSignature.verifySignature(ledgerRequest.getValue(), ledgerRequest.getSignature(), clientConfig.getPublicKeyPath()))
+            throw new HDSSException(ErrorMessage.InvalidSignature);
+
+        this.nodeService.startConsensus(ledgerRequest.getValue());
         while (!consensusReached);
-
         System.out.println("[BLOCKCHAIN SERVICE]: Consensus reached");
 
         LedgerResponseAppend ledgerResponse = getLedgerResponse();
-        String serializedResponse = new Gson().toJson(ledgerResponse);
-        LedgerResponse response = new LedgerResponse(Message.Type.REPLY, Message.Type.APPEND, selfConfig.getId(), serializedResponse, message.getRequestId());
-        clientsLink.send(message.getSenderId(), response);
-        System.out.printf("[BLOCKCHAIN SERVICE]: Sent response with request Id %s\n", response.getRequestId());
+        sendResponse(ledgerResponse, message.getSenderId(), message.getRequestId(), Message.Type.APPEND);
         this.setConsensusReached(false);
     }
 
@@ -90,58 +82,54 @@ public class BlockchainService implements UDPService {
         ProcessConfig clientConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(message.getSenderId())).findFirst().get();
         LedgerRequestBalance ledgerRequest = message.deserializeBalance();
 
-        if (DigitalSignature.verifySignature(message.getMessage(), message.getClientSignature(), clientConfig.getPublicKeyPath())) {
-            System.out.println("[BLOCKCHAIN SERVICE]: Signature is valid. Checking balance...");
-        } else {
-            System.out.println("[BLOCKCHAIN SERVICE]: Signature is invalid");
-            return;
-        }
+        if (!DigitalSignature.verifySignature(message.getMessage(), message.getClientSignature(), clientConfig.getPublicKeyPath()))
+            throw new HDSSException(ErrorMessage.InvalidSignature);
 
+        balanceOperation(ledgerRequest, message);
+    }
+
+    public void balanceOperation(LedgerRequestBalance ledgerRequest, LedgerRequest message) {
         ProcessConfig clientToCheckConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(ledgerRequest.getClientId())).findFirst().get();
 
         LedgerResponseBalance ledgerResponse = new LedgerResponseBalance(this.selfConfig.getId(), clientToCheckConfig.getBalance());
-        String serializedResponse = new Gson().toJson(ledgerResponse);
-        LedgerResponse response = new LedgerResponse(Message.Type.REPLY, Message.Type.BALANCE, selfConfig.getId(), serializedResponse, message.getRequestId());
-        clientsLink.send(message.getSenderId(), response);
+        sendResponse(ledgerResponse, message.getSenderId(), message.getRequestId(), Message.Type.BALANCE);
     }
 
     public void transfer(LedgerRequest message) {
         ProcessConfig clientConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(message.getSenderId())).findFirst().get();
         LedgerRequestTransfer ledgerRequest = message.deserializeTransfer();
 
-        if (DigitalSignature.verifySignature(message.getMessage(), message.getClientSignature(), clientConfig.getPublicKeyPath())) {
-            System.out.println("[BLOCKCHAIN SERVICE]: Signature is valid. Transferring...");
-        } else {
-            System.out.println("[BLOCKCHAIN SERVICE]: Signature is invalid");
-            return;
-        }
+        if (!DigitalSignature.verifySignature(message.getMessage(), message.getClientSignature(), clientConfig.getPublicKeyPath()))
+            throw new HDSSException(ErrorMessage.InvalidSignature);
 
-        transferOperation(ledgerRequest);
+        if (!DigitalSignature.verifySignature(String.valueOf(ledgerRequest.getAmount()), ledgerRequest.getSignature(), clientConfig.getPublicKeyPath()))
+            throw new HDSSException(ErrorMessage.InvalidSignature);
+
+        transferOperation(ledgerRequest, message.getRequestId());
     }
 
-    public void transferOperation(LedgerRequestTransfer ledgerRequest) {
+    public void transferOperation(LedgerRequestTransfer ledgerRequest, int requestId) {
         ProcessConfig sourceConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(ledgerRequest.getSenderId())).findFirst().get();
         ProcessConfig destinationConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(ledgerRequest.getDestinationId())).findFirst().get();
         int amount = ledgerRequest.getAmount();
         int sourceBalance = sourceConfig.getBalance();
         int destinationBalance = destinationConfig.getBalance();
 
-        if (sourceBalance < amount) {
-            System.out.println("[BLOCKCHAIN SERVICE]: Not enough balance to transfer");
-            return;
-        }
-
-        if (sourceBalance <= 0) {
-            System.out.println("[BLOCKCHAIN SERVICE]: Invalid amount to transfer");
-            return;
-        }
+        if (sourceConfig.getId().equals(destinationConfig.getId())) throw new HDSSException(ErrorMessage.CannotTransferToSelf);
+        if (sourceBalance < amount) throw new HDSSException(ErrorMessage.InsufficientFunds);
+        if (sourceBalance <= 0) throw new HDSSException(ErrorMessage.CannotTranferNegativeAmount);
 
         destinationConfig.setBalance(destinationBalance + amount);
         sourceConfig.setBalance(sourceBalance - amount);
 
-        System.out.println("[BLOCKCHAIN SERVICE]: Transfer successful");
-        System.out.println("[BLOCKCHAIN SERVICE]: New balance for Source: " + sourceConfig.getId() + " is " + sourceConfig.getBalance());
-        System.out.println("[BLOCKCHAIN SERVICE]: New balance for Destination: " + destinationConfig.getId() + " is " + destinationConfig.getBalance());
+        LedgerResponseTransfer ledgerResponse = new LedgerResponseTransfer(this.selfConfig.getId(), sourceConfig.getBalance(), destinationConfig.getBalance());
+        sendResponse(ledgerResponse, ledgerRequest.getSenderId(), requestId, Message.Type.TRANSFER);
+    }
+
+    public void sendResponse(Message responseOperation, String clientId, int requestId, Message.Type type) {
+        String serializedResponse = new Gson().toJson(responseOperation);
+        LedgerResponse response = new LedgerResponse(Message.Type.REPLY, type, selfConfig.getId(), serializedResponse, requestId);
+        clientsLink.send(clientId, response);
     }
 
     // this is blocking
@@ -176,7 +164,7 @@ public class BlockchainService implements UDPService {
                                     transfer((LedgerRequest) message);
                                 }
                             }
-                            System.out.println("BLOCKCHAIN SERVICE: Finished processing message");
+                            System.out.println("[BLOCKCHAIN SERVICE]: Finished processing message");
                         }).start();
                     } catch (IOException | ClassNotFoundException e) {
                         throw new RuntimeException(e);

@@ -7,9 +7,13 @@ public enum ErrorMessage {
     SocketSendingError("Error while sending message"),
     CannotOpenSocket("Error while opening socket"),
     UnableToSignMessage("Could not sign the message. Check if the key path is correct"),
+    InvalidSignature("Invalid signature, the message was tampered with"),
     FailedToReadPublicKey("Could not read the public key"),
     CannotParseMessage("Could not parse the message"),
-    ClientNotFound("Client not found");
+    ClientNotFound("Client not found"),
+    CannotTranferNegativeAmount("Cannot transfer a negative amount"),
+    CannotTransferToSelf("Cannot transfer to self"),
+    InsufficientFunds("Insufficient funds");
 
     private final String message;
 

@@ -25,6 +25,10 @@ public class LedgerResponse extends Message {
         return new Gson().fromJson(this.getMessage(), LedgerResponseBalance.class);
     }
 
+    public LedgerResponseTransfer deserializeTransfer() {
+        return new Gson().fromJson(this.getMessage(), LedgerResponseTransfer.class);
+    }
+
     public int getRequestId() {
         return requestId;
     }

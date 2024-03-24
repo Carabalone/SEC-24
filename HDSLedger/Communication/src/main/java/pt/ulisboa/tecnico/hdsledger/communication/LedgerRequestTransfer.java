@@ -6,10 +6,13 @@ public class LedgerRequestTransfer extends Message {
 
     private int amount;
 
-    public LedgerRequestTransfer(Type type, String senderId, String destinationId, int amount) {
+    private String signature;
+
+    public LedgerRequestTransfer(Type type, String senderId, String destinationId, int amount, String signature) {
         super(senderId, type);
         this.destinationId = destinationId;
         this.amount = amount;
+        this.signature = signature;
     }
 
     public String getDestinationId() { return destinationId; }
@@ -19,4 +22,8 @@ public class LedgerRequestTransfer extends Message {
     public int getAmount() { return amount; }
 
     public void setAmount(int amount) { this.amount = amount; }
+
+    public String getSignature() { return signature; }
+
+    public void setSignature(String signature) { this.signature = signature; }
 }
