@@ -63,7 +63,7 @@ public class BlockchainService implements UDPService {
         ProcessConfig clientConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(message.getSenderId())).findFirst().get();
         LedgerRequestAppend ledgerRequest = message.deserializeAppend();
 
-        if (!DigitalSignature.verifySignature(message.getMessage(), message.getClientSignature(), clientConfig.getPublicKeyPath()))
+        if (!DigitalSignature.verifySignature(message.getRequest(), message.getClientSignature(), clientConfig.getPublicKeyPath()))
             throw new HDSSException(ErrorMessage.InvalidSignature);
 
         if (!DigitalSignature.verifySignature(ledgerRequest.getValue(), ledgerRequest.getSignature(), clientConfig.getPublicKeyPath()))
@@ -82,7 +82,7 @@ public class BlockchainService implements UDPService {
         ProcessConfig clientConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(message.getSenderId())).findFirst().get();
         LedgerRequestBalance ledgerRequest = message.deserializeBalance();
 
-        if (!DigitalSignature.verifySignature(message.getMessage(), message.getClientSignature(), clientConfig.getPublicKeyPath()))
+        if (!DigitalSignature.verifySignature(message.getRequest(), message.getClientSignature(), clientConfig.getPublicKeyPath()))
             throw new HDSSException(ErrorMessage.InvalidSignature);
 
         balanceOperation(ledgerRequest, message);
@@ -99,7 +99,7 @@ public class BlockchainService implements UDPService {
         ProcessConfig clientConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(message.getSenderId())).findFirst().get();
         LedgerRequestTransfer ledgerRequest = message.deserializeTransfer();
 
-        if (!DigitalSignature.verifySignature(message.getMessage(), message.getClientSignature(), clientConfig.getPublicKeyPath()))
+        if (!DigitalSignature.verifySignature(message.getRequest(), message.getClientSignature(), clientConfig.getPublicKeyPath()))
             throw new HDSSException(ErrorMessage.InvalidSignature);
 
         if (!DigitalSignature.verifySignature(String.valueOf(ledgerRequest.getAmount()), ledgerRequest.getSignature(), clientConfig.getPublicKeyPath()))

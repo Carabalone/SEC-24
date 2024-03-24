@@ -10,10 +10,7 @@ public class Block {
 
     private List<LedgerRequest> requests;
 
-    public Block(int consensusInstance, ArrayList<LedgerRequest> requests) {
-        this.consensusInstance = consensusInstance;
-        this.requests = requests;
-    }
+    public Block() {}
 
     public void addRequest(LedgerRequest request) {
         requests.add(request);

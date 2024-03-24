@@ -5,30 +5,26 @@ import com.google.gson.Gson;
 public class LedgerRequest extends Message {
 
     // Serialized request
-    private String message;
+    private String request;
 
     private String clientSignature;
 
     private int requestId;
 
-    public LedgerRequest(String senderId, Type type, int requestId, String message, String signature) {
+    public LedgerRequest(String senderId, Type type, int requestId, String request, String signature) {
         super(senderId, type);
         this.requestId = requestId;
-        this.message = message;
+        this.request = request;
         this.clientSignature = signature;
     }
 
     public LedgerRequestAppend deserializeAppend() {
-        return new Gson().fromJson(message, LedgerRequestAppend.class);
+        return new Gson().fromJson(request, LedgerRequestAppend.class);
     }
 
-    public LedgerRequestBalance deserializeBalance() {
-        return new Gson().fromJson(message, LedgerRequestBalance.class);
-    }
+    public LedgerRequestBalance deserializeBalance() { return new Gson().fromJson(request, LedgerRequestBalance.class); }
 
-    public LedgerRequestTransfer deserializeTransfer() {
-        return new Gson().fromJson(message, LedgerRequestTransfer.class);
-    }
+    public LedgerRequestTransfer deserializeTransfer() { return new Gson().fromJson(request, LedgerRequestTransfer.class); }
 
     public int getRequestId() {
         return requestId;
@@ -38,12 +34,12 @@ public class LedgerRequest extends Message {
         this.requestId = requestId;
     }
 
-    public String getMessage() {
-        return message;
+    public String getRequest() {
+        return request;
     }
 
-    public void setMessage(String message) {
-        this.message = message;
+    public void setRequest(String request) {
+        this.request = request;
     }
 
     public String getClientSignature() {

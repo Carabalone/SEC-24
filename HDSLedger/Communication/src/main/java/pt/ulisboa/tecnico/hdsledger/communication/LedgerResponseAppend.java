@@ -3,6 +3,7 @@ package pt.ulisboa.tecnico.hdsledger.communication;
 import java.util.ArrayList;
 
 public class LedgerResponseAppend extends Message {
+
     private int consensusInstance;
 
     private ArrayList<String> values;

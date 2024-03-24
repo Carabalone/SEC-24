@@ -1,6 +1,7 @@
 package pt.ulisboa.tecnico.hdsledger.communication;
 
 public class LedgerRequestAppend extends Message {
+
     private String value;
 
     private int knownBlockchainSize;

@@ -4,7 +4,6 @@ import com.google.gson.Gson;
 
 public class CommitMessage {
 
-    // Value
     private String value;
 
     public CommitMessage(String value) {

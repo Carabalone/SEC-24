@@ -4,10 +4,14 @@ import com.google.gson.Gson;
 
 public class RoundChangeMessage {
 
-    int consensusInstance;
-    int currentRound;
-    int preparedRound;
-    String preparedValue;
+    private int consensusInstance;
+
+    private int currentRound;
+
+    private int preparedRound;
+
+    private String preparedValue;
+
 
     public RoundChangeMessage(int consensusInstance, int currentRound, int preparedRound, String preparedValue) {
         this.consensusInstance = consensusInstance;

@@ -6,6 +6,7 @@ import java.security.PublicKey;
 
 
 public class LedgerRequestBalance extends Message {
+
     private String clientKey;
 
     private String clientId;

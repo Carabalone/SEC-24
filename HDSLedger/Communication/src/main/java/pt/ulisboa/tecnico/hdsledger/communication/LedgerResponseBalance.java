@@ -1,6 +1,7 @@
 package pt.ulisboa.tecnico.hdsledger.communication;
 
 public class LedgerResponseBalance extends Message {
+
     private int balance;
 
 
