@@ -74,4 +74,15 @@ public class ConsensusMessage extends Message {
     public void setReplyToMessageId(int replyToMessageId) {
         this.replyToMessageId = replyToMessageId;
     }
+
+    @Override
+    public String toString() {
+        return "ConsensusMessage{" +
+                "consensusInstance=" + consensusInstance +
+                ", round=" + round +
+                ", replyTo='" + replyTo + '\'' +
+                ", replyToMessageId=" + replyToMessageId +
+                ", message='" + message + '\'' +
+                '}';
+    }
 }

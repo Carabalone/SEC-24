@@ -31,8 +31,8 @@ public class HDSTimer {
     }
 
     public void start(int n) {
-        if (currentState != State.STOPPED) {
-            return; // Timer can only start from STOPPED state
+        if (currentState == State.RUNNING) {
+            return; // Timer can only start from STOPPED or EXPIRED state
         }
 
         this.exponent = n;

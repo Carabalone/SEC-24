@@ -1,6 +1,7 @@
 package pt.ulisboa.tecnico.hdsledger.service.services;
 
 import java.io.IOException;
+import java.sql.SQLOutput;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -175,6 +176,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
     }
 
     private void startOrRestartTimer(int instance, int round) {
+        System.out.println("[TIMER] - RESTARTING TIMER FOR INSTANCE " + instance + " Round: " + round);
+
         HDSTimer timer = timers.putIfAbsent(instance, new HDSTimer(instance));
         if (timer == null)
             timer = timers.get(instance);
@@ -419,6 +422,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
             // stop timer
             HDSTimer timer = timers.get(consensusInstance);
             if (timer != null) {
+                System.out.println("[TIMER] - STOPPING TIMER FOR INSTANCE " + consensusInstance);
                 timer.stop();
             }
 
@@ -536,6 +540,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
         // TODO: verify round & instance
         // TODO:
+
+        LOGGER.log(Level.INFO, MessageFormat.format("Received {0}/{1} messages", messages.size(), maxFaults() + 1));
         if (messages.size() == maxFaults() + 1) {
 
             LOGGER.log(Level.INFO,
@@ -622,6 +628,17 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 if (isLeader(config.getId())) {
                     LOGGER.log(Level.INFO,
                             "[RC] I'm leader but not justifying round change");
+
+//                    LOGGER.log(Level.INFO,
+//                            "[RC] lets see what messages we got in the quorum..."
+//                    );
+//                    Collection<ConsensusMessage> q = roundChangeMessages.getMessages(consensusInstance, round).values();
+//
+//                    for (ConsensusMessage m : q) {
+//                        LOGGER.log(Level.INFO,
+//                                MessageFormat.format("[RC] Quorum message: {0}", m.getMessage())
+//                        );
+//                    }
                     return;
                 }
                 LOGGER.log(Level.INFO,
@@ -632,19 +649,22 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
             LOGGER.log(Level.INFO,
                     "[RC] Entered second predicate (There is no quorum)."
             );
+            LOGGER.log(Level.INFO,
+                "[RC] there are " + roundChangeMessages.getMessages(consensusInstance, round).values().size() + " messages in the bucket."
+            );
 
             if (isLeader(config.getId())) {
 
-                LOGGER.log(Level.INFO,
-                        "[RC] lets see what messages we got in the quorum..."
-                );
-                Collection<ConsensusMessage> quorum = roundChangeMessages.getMessages(consensusInstance, round).values();
-
-                for (ConsensusMessage m : quorum) {
-                    LOGGER.log(Level.INFO,
-                            MessageFormat.format("[RC] Quorum message: {0}", m.getMessage())
-                    );
-                }
+//                LOGGER.log(Level.INFO,
+//                        "[RC] lets see what messages we got in the quorum..."
+//                );
+//                Collection<ConsensusMessage> quorum = roundChangeMessages.getMessages(consensusInstance, round).values();
+//
+//                for (ConsensusMessage m : quorum) {
+//                    LOGGER.log(Level.INFO,
+//                            MessageFormat.format("[RC] Quorum message: {0}", m.getMessage())
+//                    );
+//                }
             }
         }
     }
@@ -694,10 +714,10 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 .map(ConsensusMessage::deserializeRoundChangeMessage)
                 .allMatch(m -> m.getPreparedRound() == -1 && m.getPreparedValue() == null);
 
-        LOGGER.log(
-                Level.INFO,
-                "[RC] Null predicate verified, result: " + nullPredicate
-        );
+//        LOGGER.log(
+//                Level.INFO,
+//                "[RC] Null predicate verified, result: " + nullPredicate
+//        );
 
         Optional<Pair<Integer, String>> highestPreparedPair = highestPrepared(quorum);
 
@@ -714,6 +734,10 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         Optional<String> existsPrepareQuorum = prepareMessages.hasValidPrepareQuorum(config.getId(), instance, highestPreparedRound);
 
         if (existsPrepareQuorum.isPresent()) {
+//            LOGGER.log(Level.INFO,
+//                    "[RC] There is a prepare quorum"
+//            );
+
             Collection<ConsensusMessage> prepareQuorum = prepareMessages.getMessages(instance, highestPreparedRound).values();
 
             //          ∨ received a quorum of valid 〈PREPARE, λi, pr, value〉 messages such that:
@@ -722,15 +746,30 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                     .allMatch(m -> m.getRound() == highestPreparedRound &&
                             m.deserializePrepareMessage().getValue().equals(highestPreparedValue));
 
-            LOGGER.log(
-                    Level.INFO,
-                    MessageFormat.format("[RC] Highest Prepared Predicate verified, result: {0}", highestPreparedPredicate)
-            );
-            LOGGER.log(
-                    Level.INFO,
-                    "[RC] Justified Round Change, result: " + (nullPredicate || highestPreparedPredicate)
-            );
+            boolean testPredicate = existsPrepareQuorum.get().equals(highestPreparedValue);
+
+//            LOGGER.log(Level.INFO, MessageFormat.format("[RC] HighestPReparedPRedicate is {0} and test predicate is {1}", highestPreparedPredicate, testPredicate));
+//
+//            LOGGER.log(
+//                    Level.INFO,
+//                    MessageFormat.format("[RC] Highest Prepared Predicate verified, result: {0}", highestPreparedPredicate)
+//            );
+//            LOGGER.log(
+//                    Level.INFO,
+//                    "[RC] Justified Round Change, result: " + (nullPredicate || highestPreparedPredicate)
+//            );
             return nullPredicate || highestPreparedPredicate;
+        } else {
+//            LOGGER.log(Level.INFO,
+//                    MessageFormat.format("[RC] There is NOT a prepare quorum, round = {0}, Messages:",
+//                           highestPreparedRound
+//                    ));
+//
+//            for (var m : prepareMessages.getMessages(instance, highestPreparedRound).values()) {
+//                LOGGER.log(Level.INFO,
+//                        MessageFormat.format("Prepare Quorum Message: {0}", m)
+//                );
+//            }
         }
 
         LOGGER.log(
