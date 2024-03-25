@@ -65,6 +65,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
     // used for message delay failure type
     private int messageDelayCounter = 0;
+    // used for testing of timers every 10 seconds
+    private boolean started = false;
 
     public NodeService(Link nodesLink, Link clientsLink,
                        ProcessConfig config, ProcessConfig leaderConfig, ProcessConfig[] nodesConfig) {
@@ -176,14 +178,13 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
     }
 
     private void startOrRestartTimer(int instance, int round) {
-        System.out.println("[TIMER] - RESTARTING TIMER FOR INSTANCE " + instance + " Round: " + round);
 
         HDSTimer timer = timers.get(instance);
         if (timer == null) {
             timer = new HDSTimer();
             timers.put(instance, timer);
-            timer.subscribe(config.getId(), this);
         }
+        timer.subscribe(config.getId(), this);
         timer.startOrRestart(round);
     }
 
@@ -493,8 +494,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         InstanceInfo existingConsensus = this.instanceInfo.get(localInstance);
 
         LOGGER.log(Level.INFO,
-                MessageFormat.format("{0} - Timer expired for Consensus Instance {1}, Round {2}",
-                        config.getId(), localInstance, existingConsensus.getCurrentRound()));
+                MessageFormat.format("[TIMER] Timer expired for Consensus Instance {0}, Round {1}",
+                        localInstance, existingConsensus.getCurrentRound()));
 
         // ri ← ri + 1
         existingConsensus.setCurrentRound(existingConsensus.getCurrentRound() + 1);
@@ -507,6 +508,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         LOGGER.log(Level.WARNING,
                 MessageFormat.format("local Instance in Timer {0}", localInstance));
 
+        LOGGER.log(Level.INFO,
+                "[TIMER] - Started Timer in uponTimerExpire");
         startOrRestartTimer(localInstance, round);
 
         RoundChangeMessage roundChangeMessage = new RoundChangeMessage(localInstance, round,
@@ -602,12 +605,17 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         boolean existsRoundChangeQuorum = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
 
         if (existsRoundChangeQuorum) {
-            Collection<ConsensusMessage> quorum = roundChangeMessages.getMessages(consensusInstance, round).values();
-
             LOGGER.log(
                     Level.INFO,
                     "[RC] Entered second predicate."
             );
+            Collection<ConsensusMessage> quorum = roundChangeMessages.getMessages(consensusInstance, round).values();
+
+            LOGGER.log(Level.SEVERE,
+                    MessageFormat.format(
+                            "[RC] There exists a RC quorum on round {0}", round
+                    ));
+
 
             if (isLeader(config.getId()) && justifyRoundChange(quorum)) {
 
@@ -628,7 +636,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
                 ConsensusMessage consensusMessage = this.createConsensusMessage(value, consensusInstance, round);
 
-                startOrRestartTimer(consensusInstance, round);
+                //startOrRestartTimer(consensusInstance, round);
 
                 this.nodesLink.broadcast(consensusMessage);
             } else {
@@ -714,6 +722,12 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
             LOGGER.log(Level.SEVERE, "[JUSTIFY RC] SHOULD NEVER HAPPEN: quorum is empty, returning false...");
             return false;
         }
+
+        LOGGER.log(Level.SEVERE,
+                "[JRC] There is a quorum for round " +firstObject.getRound() + "This are the messages"
+                );
+
+        quorum.forEach(System.out::println);
 
         int instance = firstObject.getConsensusInstance();
 
@@ -876,10 +890,36 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         leaderConfig = nodesConfig[nextLeaderIndex];
     }
 
+    private void testTimer() {
+        if (!started) {
+            started = true;
+            try {
+                new Thread(() -> {
+                    while (true) {
+
+                        if (timers.get(consensusInstance.get()) == null) {
+                            continue;
+                        }
+                        System.out.println("Timer is: " + timers.get(consensusInstance.get()).getState());
+                        try {
+                            Thread.sleep(5 * 1000);
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }).start();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     @Override
     public void listen() {
+        testTimer();
         LOGGER.log(Level.INFO, MessageFormat.format("{0} Failure:  {1}",
                 config.getId(), config.getFailureType()));
+
         try {
             // Thread to listen on every request
             new Thread(() -> {

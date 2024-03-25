@@ -31,10 +31,6 @@ public class HDSTimer {
     }
 
     public void start(int n) {
-        if (currentState == State.RUNNING) {
-            return; // Timer can only start from STOPPED or EXPIRED state
-        }
-
         this.exponent = n;
         this.durationMillis = (long) Math.pow(2, n) * 1000; // Convert seconds to milliseconds
 
