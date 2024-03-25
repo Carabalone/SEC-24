@@ -123,11 +123,16 @@ public class Client {
 
                         Thread.sleep(5 * 1000);
 
-                        System.out.println("Retarting timer for 4 seconds");
+                        System.out.println("Restarting timer for 4 seconds");
                         timer1.startOrRestart(2);
-                        System.out.println("Retarting timer for 2 seconds");
+                        System.out.println("Restarting timer for 2 seconds");
                         timer1.startOrRestart(1);
                         Thread.sleep(2 * 1000);
+
+                        System.out.println("restarting timer for 8 seconds, waiting for 4");
+                        timer1.startOrRestart(3);
+                        Thread.sleep(4 * 1000);
+                        timer1.stop();
 
                         System.out.println("Ended test.");
 

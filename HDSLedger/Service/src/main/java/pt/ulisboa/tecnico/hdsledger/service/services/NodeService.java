@@ -61,7 +61,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
     private ArrayList<String> lastCommitedValue = new ArrayList<>();
 
     // consensusInstance -> timer
-    private Map<Integer, HDSTimer> timers = new ConcurrentHashMap<>();
+    private final Map<Integer, HDSTimer> timers = new ConcurrentHashMap<>();
 
     // used for message delay failure type
     private int messageDelayCounter = 0;
@@ -179,13 +179,15 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
     private void startOrRestartTimer(int instance, int round) {
 
-        HDSTimer timer = timers.get(instance);
-        if (timer == null) {
-            timer = new HDSTimer();
-            timers.put(instance, timer);
+        synchronized (timers) {
+            HDSTimer timer = timers.get(instance);
+            if (timer == null) {
+                timer = new HDSTimer();
+                timers.put(instance, timer);
+            }
+            timer.subscribe(config.getId(), this);
+            timer.startOrRestart(round);
         }
-        timer.subscribe(config.getId(), this);
-        timer.startOrRestart(round);
     }
 
     /*
@@ -428,10 +430,12 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         if (commitValue.isPresent() && instance.getCommittedRound() < round) {
 
             // stop timer
-            HDSTimer timer = timers.get(consensusInstance);
-            if (timer != null) {
-                System.out.println("[TIMER] - STOPPING TIMER FOR INSTANCE " + consensusInstance);
-                timer.stop();
+            synchronized (timers) {
+                HDSTimer timer = timers.get(consensusInstance);
+                if (timer != null) {
+                    System.out.println("[TIMER] - STOPPING TIMER FOR INSTANCE " + consensusInstance);
+                    timer.stop();
+                }
             }
 
             instance = this.instanceInfo.get(consensusInstance);

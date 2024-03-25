@@ -42,10 +42,13 @@ public class HDSTimer {
                 timer.cancel();
             }
         }, durationMillis);
+        System.out.println("[TIMER CLASS] - Started timer for " + durationMillis + " ms");
     }
 
     public void stop() {
-        timer.cancel();
+        if (timer != null) {
+            timer.cancel();
+        }
         currentState = State.STOPPED;
     }
 
