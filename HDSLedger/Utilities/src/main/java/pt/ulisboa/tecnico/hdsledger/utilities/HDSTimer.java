@@ -24,10 +24,8 @@ public class HDSTimer {
     }
 
     public void startOrRestart(int round) {
-      if (currentState == State.RUNNING) {
         this.stop();
-      }
-      start(round);
+        start(round);
     }
 
     public void start(int n) {
@@ -47,10 +45,8 @@ public class HDSTimer {
     }
 
     public void stop() {
-        if (currentState == State.RUNNING) {
-            timer.cancel();
-            currentState = State.STOPPED;
-        }
+        timer.cancel();
+        currentState = State.STOPPED;
     }
 
     public State getState() {
