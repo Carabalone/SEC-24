@@ -1,6 +1,7 @@
 package pt.ulisboa.tecnico.hdsledger.service.services;
 
 import java.io.IOException;
+import java.sql.SQLOutput;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -60,10 +61,12 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
     private ArrayList<String> lastCommitedValue = new ArrayList<>();
 
     // consensusInstance -> timer
-    private Map<Integer, HDSTimer> timers = new ConcurrentHashMap<>();
+    private final Map<Integer, HDSTimer> timers = new ConcurrentHashMap<>();
 
     // used for message delay failure type
     private int messageDelayCounter = 0;
+    // used for testing of timers every 10 seconds
+    private boolean started = false;
 
     public NodeService(Link nodesLink, Link clientsLink,
                        ProcessConfig config, ProcessConfig leaderConfig, ProcessConfig[] nodesConfig) {
@@ -175,11 +178,16 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
     }
 
     private void startOrRestartTimer(int instance, int round) {
-        HDSTimer timer = timers.putIfAbsent(instance, new HDSTimer(instance));
-        if (timer == null)
-            timer = timers.get(instance);
-        timer.subscribe(config.getId(), this);
-        timer.startOrRestart(round);
+
+        synchronized (timers) {
+            HDSTimer timer = timers.get(instance);
+            if (timer == null) {
+                timer = new HDSTimer();
+                timers.put(instance, timer);
+            }
+            timer.subscribe(config.getId(), this);
+            timer.startOrRestart(round);
+        }
     }
 
     /*
@@ -217,6 +225,17 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                     MessageFormat.format(
                             "[PRE-PREPARE] Received Round {0} but round is lower than current round {1}",
                             round, instanceInfo.get(consensusInstance).getCurrentRound()));
+            return;
+        }
+
+        if (!justifyPrePrepare(message)) {
+            LOGGER.log(
+                    Level.INFO,
+                    MessageFormat.format(
+                            "{0} - Pre-prepare message not justified, ignoring",
+                            config.getId())
+            );
+
             return;
         }
 
@@ -334,6 +353,9 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
             Collection<ConsensusMessage> sendersMessage = prepareMessages.getMessages(consensusInstance, round)
                     .values();
 
+            System.out.println("[PREPARE] Received a prepare quorum for value " + value + ", Messages: ");
+            sendersMessage.forEach(System.out::println);
+
             CommitMessage c = new CommitMessage(preparedValue.get());
             instance.setCommitMessage(c);
 
@@ -366,8 +388,13 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                         config.getId(), message.getSenderId(), consensusInstance, round));
 
         // ignore messages from previous rounds
-        if (message.getRound() < instanceInfo.get(this.consensusInstance.get()).getCurrentRound())
+        if (message.getRound() < instanceInfo.get(this.consensusInstance.get()).getCurrentRound()) {
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format(
+                            "[COMMIT] Received Round {0} but round is lower than current round {1}",
+                            round, instanceInfo.get(this.consensusInstance.get()).getCurrentRound()));
             return;
+        }
 
         commitMessages.addMessage(message);
 
@@ -406,9 +433,12 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         if (commitValue.isPresent() && instance.getCommittedRound() < round) {
 
             // stop timer
-            HDSTimer timer = timers.get(consensusInstance);
-            if (timer != null) {
-                timer.stop();
+            synchronized (timers) {
+                HDSTimer timer = timers.get(consensusInstance);
+                if (timer != null) {
+                    System.out.println("[TIMER] - STOPPING TIMER FOR INSTANCE " + consensusInstance);
+                    timer.stop();
+                }
             }
 
             instance = this.instanceInfo.get(consensusInstance);
@@ -471,8 +501,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         InstanceInfo existingConsensus = this.instanceInfo.get(localInstance);
 
         LOGGER.log(Level.INFO,
-                MessageFormat.format("{0} - Timer expired for Consensus Instance {1}, Round {2}",
-                        config.getId(), localInstance, existingConsensus.getCurrentRound()));
+                MessageFormat.format("[TIMER] Timer expired for Consensus Instance {0}, Round {1}",
+                        localInstance, existingConsensus.getCurrentRound()));
 
         // ri ← ri + 1
         existingConsensus.setCurrentRound(existingConsensus.getCurrentRound() + 1);
@@ -485,6 +515,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         LOGGER.log(Level.WARNING,
                 MessageFormat.format("local Instance in Timer {0}", localInstance));
 
+        LOGGER.log(Level.INFO,
+                "[TIMER] - Started Timer in uponTimerExpire");
         startOrRestartTimer(localInstance, round);
 
         RoundChangeMessage roundChangeMessage = new RoundChangeMessage(localInstance, round,
@@ -497,6 +529,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 .setConsensusInstance(localInstance)
                 .setRound(round)
                 .setMessage(roundChangeMessage.toJson())
+                .setReplyTo(config.getId())
                 .build();
 
         LOGGER.log(Level.INFO,
@@ -525,6 +558,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
         // TODO: verify round & instance
         // TODO:
+
+        LOGGER.log(Level.INFO, MessageFormat.format("Received {0}/{1} messages", messages.size(), maxFaults() + 1));
         if (messages.size() == maxFaults() + 1) {
 
             LOGGER.log(Level.INFO,
@@ -560,6 +595,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                         .setConsensusInstance(consensusInstance)
                         .setRound(round)
                         .setMessage(roundChangeMessage.toJson())
+                        .setReplyTo(config.getId())
                         .build();
 
                 nodesLink.broadcast(consensusMessage);
@@ -578,14 +614,19 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         boolean existsRoundChangeQuorum = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
 
         if (existsRoundChangeQuorum) {
-            Collection<ConsensusMessage> quorum = roundChangeMessages.getMessages(consensusInstance, round).values();
-
             LOGGER.log(
                     Level.INFO,
                     "[RC] Entered second predicate."
             );
+            Collection<ConsensusMessage> quorum = roundChangeMessages.getMessages(consensusInstance, round).values();
 
-            if (isLeader(config.getId()) /* ^ justifyRoundChange(quorum)) */) {
+            LOGGER.log(Level.SEVERE,
+                    MessageFormat.format(
+                            "[RC] There exists a RC quorum on round {0}", round
+                    ));
+
+
+            if (isLeader(config.getId()) && justifyRoundChange(quorum)) {
 
                 LOGGER.log(Level.INFO,
                         "[RC] Entered second predicate (There is a quorum) and I'm leader"
@@ -604,13 +645,36 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
                 ConsensusMessage consensusMessage = this.createConsensusMessage(value, consensusInstance, round);
 
-                startOrRestartTimer(consensusInstance, round);
+                //startOrRestartTimer(consensusInstance, round);
 
                 this.nodesLink.broadcast(consensusMessage);
+            } else {
+                if (isLeader(config.getId())) {
+                    LOGGER.log(Level.INFO,
+                            "[RC] I'm leader but not justifying round change");
+
+                    LOGGER.log(Level.INFO,
+                            "[RC] lets see what messages we got in the quorum..."
+                    );
+                    Collection<ConsensusMessage> q = roundChangeMessages.getMessages(consensusInstance, round).values();
+
+                    for (ConsensusMessage m : q) {
+                        LOGGER.log(Level.INFO,
+                                MessageFormat.format("[RC] Quorum message: {0}", m.getMessage())
+                        );
+                    }
+                    return;
+                }
+                LOGGER.log(Level.INFO,
+                        "[RC] not leader thus not doing anything"
+                );
             }
         } else {
             LOGGER.log(Level.INFO,
                     "[RC] Entered second predicate (There is no quorum)."
+            );
+            LOGGER.log(Level.INFO,
+                "[RC] there are " + roundChangeMessages.getMessages(consensusInstance, round).values().size() + " messages in the bucket."
             );
 
             if (isLeader(config.getId())) {
@@ -657,11 +721,22 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 //                .map(RoundChangeMessage::getConsensusInstance)
 //                .distinct().count() == 1;
 
+        LOGGER.log(
+                Level.INFO,
+                "[RC] Justifying Round Change"
+        );
+
         var firstObject = quorum.stream().toList().get(0);
         if (firstObject == null) {
             LOGGER.log(Level.SEVERE, "[JUSTIFY RC] SHOULD NEVER HAPPEN: quorum is empty, returning false...");
             return false;
         }
+
+        LOGGER.log(Level.SEVERE,
+                "[JRC] There is a quorum for round " +firstObject.getRound() + "This are the messages"
+                );
+
+        quorum.forEach(System.out::println);
 
         int instance = firstObject.getConsensusInstance();
 
@@ -669,10 +744,19 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 .map(ConsensusMessage::deserializeRoundChangeMessage)
                 .allMatch(m -> m.getPreparedRound() == -1 && m.getPreparedValue() == null);
 
+        LOGGER.log(
+                Level.INFO,
+                "[RC] Null predicate verified, result: " + nullPredicate
+        );
+
         Optional<Pair<Integer, String>> highestPreparedPair = highestPrepared(quorum);
 
-        if (highestPreparedPair.isEmpty())
+        if (highestPreparedPair.isEmpty()) {
+            LOGGER.log(
+                    Level.INFO,
+                    "[RC] There is no Highest Prepared Pair\nJustified Round Change, result: " + nullPredicate);
             return nullPredicate;
+        }
 
         int highestPreparedRound = highestPreparedPair.get().getPreparedRound();
         String highestPreparedValue = highestPreparedPair.get().getPreparedValue();
@@ -680,6 +764,10 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         Optional<String> existsPrepareQuorum = prepareMessages.hasValidPrepareQuorum(config.getId(), instance, highestPreparedRound);
 
         if (existsPrepareQuorum.isPresent()) {
+            LOGGER.log(Level.INFO,
+                    "[RC] There is a prepare quorum"
+            );
+
             Collection<ConsensusMessage> prepareQuorum = prepareMessages.getMessages(instance, highestPreparedRound).values();
 
             //          ∨ received a quorum of valid 〈PREPARE, λi, pr, value〉 messages such that:
@@ -688,9 +776,35 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                     .allMatch(m -> m.getRound() == highestPreparedRound &&
                             m.deserializePrepareMessage().getValue().equals(highestPreparedValue));
 
+            boolean testPredicate = existsPrepareQuorum.get().equals(highestPreparedValue);
+
+            LOGGER.log(Level.INFO, MessageFormat.format("[RC] HighestPReparedPRedicate is {0} and test predicate is {1}", highestPreparedPredicate, testPredicate));
+
+            LOGGER.log(
+                    Level.INFO,
+                    MessageFormat.format("[RC] Highest Prepared Predicate verified, result: {0}", highestPreparedPredicate)
+            );
+            LOGGER.log(
+                    Level.INFO,
+                    "[RC] Justified Round Change, result: " + (nullPredicate || highestPreparedPredicate)
+            );
             return nullPredicate || highestPreparedPredicate;
+        } else {
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format("[RC] There is NOT a prepare quorum, instance: {0} round = {1}, Messages:",
+                           instance, highestPreparedRound
+                    ));
+
+            for (var m : prepareMessages.getMessages(instance, highestPreparedRound).values()) {
+                LOGGER.log(Level.INFO,
+                        MessageFormat.format("Prepare Quorum Message: {0}", m)
+                );
+            }
         }
 
+        LOGGER.log(
+                Level.INFO,
+                "[RC] Justified Round Change, result: false");
         return false;
     }
 
@@ -785,10 +899,36 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         leaderConfig = nodesConfig[nextLeaderIndex];
     }
 
+    private void testTimer() {
+        if (!started) {
+            started = true;
+            try {
+                new Thread(() -> {
+                    while (true) {
+
+                        if (timers.get(consensusInstance.get()) == null) {
+                            continue;
+                        }
+                        System.out.println("Timer is: " + timers.get(consensusInstance.get()).getState());
+                        try {
+                            Thread.sleep(5 * 1000);
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }).start();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     @Override
     public void listen() {
+        testTimer();
         LOGGER.log(Level.INFO, MessageFormat.format("{0} Failure:  {1}",
                 config.getId(), config.getFailureType()));
+
         try {
             // Thread to listen on every request
             new Thread(() -> {

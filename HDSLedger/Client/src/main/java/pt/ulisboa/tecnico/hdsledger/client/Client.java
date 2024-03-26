@@ -109,6 +109,36 @@ public class Client {
 
                     }
 
+                    case "testTimer2" -> {
+                        System.out.println("Starting timer 2 test");
+
+                        HDSTimer timer1 = new HDSTimer();
+                        timer1.subscribe(config.get().getId(), () -> System.out.println("Timer 1 has expired!"));
+                        System.out.println("Starting timer for 2 seconds");
+                        timer1.start(1);
+
+                        Thread.sleep(3 * 1000); // wait 3 seconds
+
+                        System.out.println("Retarting timer for 4 seconds");
+                        timer1.startOrRestart(2);
+
+                        Thread.sleep(5 * 1000);
+
+                        System.out.println("Restarting timer for 4 seconds");
+                        timer1.startOrRestart(2);
+                        System.out.println("Restarting timer for 2 seconds");
+                        timer1.startOrRestart(1);
+                        Thread.sleep(2 * 1000);
+
+                        System.out.println("restarting timer for 8 seconds, waiting for 4");
+                        timer1.startOrRestart(3);
+                        Thread.sleep(4 * 1000);
+                        timer1.stop();
+
+                        System.out.println("Ended test.");
+
+                    }
+
                     default -> System.out.println("unrecognized command");
                 }
             }

@@ -24,17 +24,11 @@ public class HDSTimer {
     }
 
     public void startOrRestart(int round) {
-      if (currentState == State.RUNNING) {
         this.stop();
-      }
-      start(round);
+        start(round);
     }
 
     public void start(int n) {
-        if (currentState != State.STOPPED) {
-            return; // Timer can only start from STOPPED state
-        }
-
         this.exponent = n;
         this.durationMillis = (long) Math.pow(2, n) * 1000; // Convert seconds to milliseconds
 
@@ -48,13 +42,14 @@ public class HDSTimer {
                 timer.cancel();
             }
         }, durationMillis);
+        System.out.println("[TIMER CLASS] - Started timer for " + durationMillis + " ms");
     }
 
     public void stop() {
-        if (currentState == State.RUNNING) {
+        if (timer != null) {
             timer.cancel();
-            currentState = State.STOPPED;
         }
+        currentState = State.STOPPED;
     }
 
     public State getState() {
