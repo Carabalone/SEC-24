@@ -353,6 +353,9 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
             Collection<ConsensusMessage> sendersMessage = prepareMessages.getMessages(consensusInstance, round)
                     .values();
 
+            System.out.println("[PREPARE] Received a prepare quorum for value " + value + ", Messages: ");
+            sendersMessage.forEach(System.out::println);
+
             CommitMessage c = new CommitMessage(preparedValue.get());
             instance.setCommitMessage(c);
 
@@ -526,6 +529,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 .setConsensusInstance(localInstance)
                 .setRound(round)
                 .setMessage(roundChangeMessage.toJson())
+                .setReplyTo(config.getId())
                 .build();
 
         LOGGER.log(Level.INFO,
@@ -591,6 +595,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                         .setConsensusInstance(consensusInstance)
                         .setRound(round)
                         .setMessage(roundChangeMessage.toJson())
+                        .setReplyTo(config.getId())
                         .build();
 
                 nodesLink.broadcast(consensusMessage);
