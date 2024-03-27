@@ -1,8 +1,6 @@
 package pt.ulisboa.tecnico.hdsledger.service.models;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import pt.ulisboa.tecnico.hdsledger.communication.CommitMessage;
@@ -43,6 +41,14 @@ public class MessageBucket {
     public Optional<String> hasValidPrepareQuorum(String nodeId, int instance, int round) {
         // Create mapping of value to frequency
         HashMap<String, Integer> frequency = new HashMap<>();
+
+        if (bucket.get(instance) == null || bucket.get(instance).get(round) == null) {
+            return Optional.empty();
+        }
+
+        System.out.println("size is: ");
+        System.out.println(bucket.get(instance).get(round).values().size());
+
         bucket.get(instance).get(round).values().forEach((message) -> {
             PrepareMessage prepareMessage = message.deserializePrepareMessage();
             String value = prepareMessage.getValue();
@@ -59,6 +65,11 @@ public class MessageBucket {
     }
 
     public Optional<String> hasValidCommitQuorum(String nodeId, int instance, int round) {
+
+        if (bucket.get(instance) == null || bucket.get(instance).get(round) == null) {
+            return Optional.empty();
+        }
+
         // Create mapping of value to frequency
         HashMap<String, Integer> frequency = new HashMap<>();
         bucket.get(instance).get(round).values().forEach((message) -> {
@@ -76,29 +87,16 @@ public class MessageBucket {
         }).findFirst();
     }
 
-//    public Optional<String> hasValidRoundChangeQuorum(String nodeId, int instance, int round) {
-//        // Create mapping of value to frequency
-//        HashMap<String, Integer> frequency = new HashMap<>();
-//        bucket.get(instance).get(round).values().forEach((message) -> {
-//            RoundChangeMessage roundChangeMessage = message.deserializeRoundChangeMessage();
-//            String value = roundChangeMessage.getPreparedValue();
-//            frequency.put(value, frequency.getOrDefault(value, 0) + 1);
-//        });
-//
-//        // Only one value (if any, thus the optional) will have a frequency
-//        // greater than or equal to the quorum size
-//        return frequency.entrySet().stream().filter((Map.Entry<String, Integer> entry) -> {
-//            return entry.getValue() >= quorumSize;
-//        }).map((Map.Entry<String, Integer> entry) -> {
-//            return entry.getKey();
-//        }).findFirst();
-//    }
-
     public boolean hasValidRoundChangeQuorum(String nodeId, int instance, int round) {
+        if (bucket.get(instance) == null || bucket.get(instance).get(round) == null)
+            return false;
         return bucket.get(instance).get(round).values().size() >= quorumSize;
     }
 
     public Map<String, ConsensusMessage> getMessages(int instance, int round) {
+        if (bucket.get(instance) == null || bucket.get(instance).get(round) == null)
+            return new ConcurrentHashMap<>();
+
         return bucket.get(instance).get(round);
     }
 }

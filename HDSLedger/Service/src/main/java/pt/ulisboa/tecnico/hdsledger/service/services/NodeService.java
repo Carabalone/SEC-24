@@ -165,6 +165,14 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
         // Leader broadcasts PRE-PREPARE message
         if (this.config.isLeader()) {
+
+            if (config.getFailureType() == ProcessConfig.FailureType.SILENT_LEADER) {
+                LOGGER.log(Level.INFO,
+                        "[SILENT-LEADER] - Will not Broadcast Pre-Prepare..."
+                );
+                return;
+            }
+
             InstanceInfo instance = this.instanceInfo.get(localConsensusInstance);
             LOGGER.log(Level.INFO,
                 MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
@@ -638,6 +646,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 if (highestPrepared(quorum).isPresent()) {
                     value = highestPrepared(quorum).get().getPreparedValue();
                 } else {
+                    System.out.println(instance.getInputValue() != null);
                     value = instance.getInputValue();
                 }
 
@@ -804,8 +813,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
         LOGGER.log(
                 Level.INFO,
-                "[RC] Justified Round Change, result: false");
-        return false;
+                "[RC] Justified Round Change, result: " + nullPredicate);
+        return nullPredicate;
     }
 
     private boolean justifyPrePrepare(ConsensusMessage message) {
@@ -862,7 +871,12 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
                     return nullPredicate || highestPreparedPredicate;
             }
+
+            return nullPredicate;
             // end highestPreparedPredicate
+        } else {
+            LOGGER.log(Level.INFO,
+                    "[JUSTIFY PRE PREPARE] - There is NOT a prepare quorum");
         }
         return false;
     }
@@ -926,8 +940,10 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
     @Override
     public void listen() {
         testTimer();
+        ProcessConfig.FailureType failureType = config.getFailureType();
+
         LOGGER.log(Level.INFO, MessageFormat.format("{0} Failure:  {1}",
-                config.getId(), config.getFailureType()));
+                config.getId(), failureType));
 
         try {
             // Thread to listen on every request

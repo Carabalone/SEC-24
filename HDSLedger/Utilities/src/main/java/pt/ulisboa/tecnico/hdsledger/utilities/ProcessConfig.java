@@ -8,7 +8,8 @@ public class ProcessConfig {
         NONE("NONE"),
         CRASH("CRASH"),
         BYZANTINE("BYZANTINE"),
-        MESSAGE_DELAY("MESSAGE_DELAY");
+        MESSAGE_DELAY("MESSAGE_DELAY"),
+        SILENT_LEADER("SILENT_LEADER");
 
         String type;
         FailureType(String type) {
