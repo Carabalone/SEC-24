@@ -46,9 +46,6 @@ public class InstanceInfo {
     }
 
     public String getInputValue() {
-        if (inputValue == null) {
-            System.out.println("\n\n\n\n\nNULL INPUT VALUE \n\n\n\n");
-        }
         return inputValue;
     }
 

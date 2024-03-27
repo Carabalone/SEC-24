@@ -646,11 +646,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 if (highestPrepared(quorum).isPresent()) {
                     value = highestPrepared(quorum).get().getPreparedValue();
                 } else {
-                    System.out.println(instance.getInputValue() != null);
                     value = instance.getInputValue();
                 }
-
-                PrepareMessage prepareMessage = new PrepareMessage(value);
 
                 ConsensusMessage consensusMessage = this.createConsensusMessage(value, consensusInstance, round);
 
@@ -895,10 +892,13 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
     public Optional<Pair<Integer, String>> highestPrepared(Collection<ConsensusMessage> quorum) {
 
-        return quorum.stream().
-                map(ConsensusMessage::deserializeRoundChangeMessage).
-                max(Comparator.comparingInt(RoundChangeMessage::getPreparedRound)).
-                map(m -> new Pair<Integer, String>(m.getPreparedRound(), m.getPreparedValue()));
+        return quorum.stream()
+                .map(ConsensusMessage::deserializeRoundChangeMessage)
+                .max(Comparator.comparingInt(RoundChangeMessage::getPreparedRound))
+                .map(m -> new Pair<Integer, String>(m.getPreparedRound(), m.getPreparedValue()))
+                .filter(p -> p.getPreparedValue() != null)
+                .stream().findAny();
+
     }
 
     // this does not change round, it just changes the leader according to the round in the node state

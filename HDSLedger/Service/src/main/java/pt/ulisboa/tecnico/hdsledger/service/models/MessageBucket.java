@@ -55,6 +55,11 @@ public class MessageBucket {
             frequency.put(value, frequency.getOrDefault(value, 0) + 1);
         });
 
+        frequency.entrySet().stream().forEach( (entry) -> {
+            System.out.println(entry.getKey() == null ? "null" : entry.getKey());
+            System.out.println(entry.getValue() == null ? "null" : entry.getValue());
+        });
+
         // Only one value (if any, thus the optional) will have a frequency
         // greater than or equal to the quorum size
         return frequency.entrySet().stream().filter((Map.Entry<String, Integer> entry) -> {
