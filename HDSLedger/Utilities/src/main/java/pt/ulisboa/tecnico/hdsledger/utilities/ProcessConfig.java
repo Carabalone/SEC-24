@@ -12,7 +12,8 @@ public class ProcessConfig {
         SILENT_LEADER("SILENT_LEADER"),
         DROP("DROP"),
         DICTATOR_LEADER("DICTATOR_LEADER"),
-        BAD_CONSENSUS("BAD_CONSENSUS");
+        BAD_CONSENSUS("BAD_CONSENSUS"),
+        FAKE_LEADER("FAKE_LEADER");
 
         String type;
         FailureType(String type) {

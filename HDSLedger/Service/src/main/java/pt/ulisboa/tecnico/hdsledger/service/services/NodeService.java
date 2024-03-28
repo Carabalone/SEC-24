@@ -273,6 +273,16 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 .setReplyToMessageId(senderMessageId)
                 .build();
 
+        if (config.getFailureType() == ProcessConfig.FailureType.FAKE_LEADER) {
+            /*
+             * Because other nodes fail to verify the signature, they will not
+             * reply with ACK meaning that this node will be stuck sending messages
+             * forever
+             */
+
+            LOGGER.log(Level.INFO, MessageFormat.format("{0} - Byzantine Fake Leader", config.getId()));
+            consensusMessage.setSenderId(this.leaderConfig.getId());
+        }
         startOrRestartTimer(consensusInstance, round);
         this.nodesLink.broadcast(consensusMessage);
     }
