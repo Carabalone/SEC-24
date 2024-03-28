@@ -131,7 +131,6 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
      * @param inputValue Value to value agreed upon
      */
     public void startConsensus(String value) {
-
         if (config.getFailureType() == ProcessConfig.FailureType.CRASH) {
             LOGGER.log(
                     Level.INFO,
@@ -222,7 +221,13 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                         config.getId(), senderId, consensusInstance, round));
 
         // Verify if pre-prepare was sent by leader
-        if (!isLeader(senderId)) return;
+        if (!isLeader(senderId)) {
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format(
+                            "{0} - Received PRE-PREPARE message from {1} but not leader, ignoring",
+                            config.getId(), senderId));
+            return;
+        }
 
         // Set instance value
         this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));

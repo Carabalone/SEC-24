@@ -11,7 +11,8 @@ public class ProcessConfig {
         MESSAGE_DELAY("MESSAGE_DELAY"),
         SILENT_LEADER("SILENT_LEADER"),
         DROP("DROP"),
-        DICTATOR_LEADER("DICTATOR_LEADER");
+        DICTATOR_LEADER("DICTATOR_LEADER"),
+        BAD_CONSENSUS("BAD_CONSENSUS");
 
         String type;
         FailureType(String type) {
@@ -49,9 +50,9 @@ public class ProcessConfig {
 
     private int balance;
 
-    public boolean isLeader() {
-        return isLeader;
-    }
+    public boolean isLeader() {return isLeader; }
+
+    public void setLeader(boolean leader) { isLeader = leader; }
 
     public int getPort() {
         return port;

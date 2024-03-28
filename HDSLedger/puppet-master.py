@@ -18,7 +18,8 @@ server_configs = [
     "message_delay_small_client.json",
     "silent_leader.json",
     "drop_config.json",
-    "dictator_leader.json"
+    "dictator_leader.json",
+    "bad_consensus_config.json",
 ]
 
 index = 0

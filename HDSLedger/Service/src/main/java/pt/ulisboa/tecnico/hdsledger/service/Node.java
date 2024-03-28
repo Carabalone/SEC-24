@@ -33,6 +33,12 @@ public class Node {
             ProcessConfig leaderConfig = Arrays.stream(nodeConfigs).filter(ProcessConfig::isLeader).findAny().get();
             ProcessConfig nodeConfig = Arrays.stream(nodeConfigs).filter(c -> c.getId().equals(id)).findAny().get();
 
+            // Node pretends he is the leader
+            if (nodeConfig.getFailureType() == ProcessConfig.FailureType.BAD_CONSENSUS) {
+                Arrays.stream(nodeConfigs).filter(ProcessConfig::isLeader).forEach(n -> n.setLeader(false));
+                nodeConfig.setLeader(true);
+            }
+
             LOGGER.log(Level.INFO, MessageFormat.format("{0} - Running at {1}:{2}; is leader: {3}; private key: {4}; public key: {5}",
                     nodeConfig.getId(), nodeConfig.getHostname(), nodeConfig.getPort(),
                     nodeConfig.isLeader(), nodeConfig.getPrivateKeyPath(), nodeConfig.getPublicKeyPath()));
