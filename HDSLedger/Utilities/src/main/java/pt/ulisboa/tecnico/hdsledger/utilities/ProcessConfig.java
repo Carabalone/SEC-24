@@ -9,7 +9,8 @@ public class ProcessConfig {
         CRASH("CRASH"),
         BYZANTINE("BYZANTINE"),
         MESSAGE_DELAY("MESSAGE_DELAY"),
-        SILENT_LEADER("SILENT_LEADER");
+        SILENT_LEADER("SILENT_LEADER"),
+        DROP("DROP");
 
         String type;
         FailureType(String type) {

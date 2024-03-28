@@ -16,7 +16,8 @@ server_configs = [
     "tiny_config.json",
     "message_delay.json",
     "message_delay_small_client.json",
-    "silent_leader.json"
+    "silent_leader.json",
+    "drop_config.json"
 ]
 
 index = 0
