@@ -16,13 +16,20 @@ server_configs = [
     "tiny_config.json",
     "message_delay.json",
     "message_delay_small_client.json",
-    "silent_leader.json"
+    "silent_leader.json",
+    "dictator_leader.json"
 ]
 
 index = 0
 if (len(sys.argv) > 1):
     try:
         index = int(sys.argv[1])
+    except:
+        pass
+    try:
+        if sys.argv[1] == "h":
+            print(f"\033[93m Provide an index between 0 and {len(server_configs) - 1}. Configurations available:\n{', '.join(enumerate(server_configs))}.\033[0m")
+            sys.exit()
     except:
         index = 0
 

@@ -46,18 +46,10 @@ public class MessageBucket {
             return Optional.empty();
         }
 
-        System.out.println("size is: ");
-        System.out.println(bucket.get(instance).get(round).values().size());
-
         bucket.get(instance).get(round).values().forEach((message) -> {
             PrepareMessage prepareMessage = message.deserializePrepareMessage();
             String value = prepareMessage.getValue();
             frequency.put(value, frequency.getOrDefault(value, 0) + 1);
-        });
-
-        frequency.entrySet().stream().forEach( (entry) -> {
-            System.out.println(entry.getKey() == null ? "null" : entry.getKey());
-            System.out.println(entry.getValue() == null ? "null" : entry.getValue());
         });
 
         // Only one value (if any, thus the optional) will have a frequency

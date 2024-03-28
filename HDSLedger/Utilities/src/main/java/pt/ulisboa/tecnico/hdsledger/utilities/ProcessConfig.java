@@ -9,7 +9,8 @@ public class ProcessConfig {
         CRASH("CRASH"),
         BYZANTINE("BYZANTINE"),
         MESSAGE_DELAY("MESSAGE_DELAY"),
-        SILENT_LEADER("SILENT_LEADER");
+        SILENT_LEADER("SILENT_LEADER"),
+        DICTATOR_LEADER("DICTATOR_LEADER");
 
         String type;
         FailureType(String type) {
@@ -23,6 +24,10 @@ public class ProcessConfig {
 
     public void setFailureType(FailureType failureType) {
         this.failureType = failureType;
+    }
+
+    public boolean hasFailureType(FailureType failureType) {
+        return this.failureType == failureType;
     }
 
     private FailureType failureType;

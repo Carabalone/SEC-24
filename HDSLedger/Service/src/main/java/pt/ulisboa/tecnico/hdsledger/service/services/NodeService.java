@@ -74,7 +74,11 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         this.nodesLink = nodesLink;
         this.clientsLink = clientsLink;
         this.config = config;
-        this.leaderConfig = leaderConfig;
+
+        this.leaderConfig = config.hasFailureType(ProcessConfig.FailureType.DICTATOR_LEADER) ?
+                config :
+                leaderConfig;
+
         this.nodesConfig = nodesConfig;
 
         this.prepareMessages = new MessageBucket(nodesConfig.length);
@@ -517,6 +521,14 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         LOGGER.log(Level.INFO, MessageFormat.format(
                 "{0} - Changed round to {1}", config.getId(), existingConsensus.getCurrentRound()
         ));
+
+        // will change the round but does not want the leader to change, so will not broadcast round change.
+        if (config.hasFailureType(ProcessConfig.FailureType.DICTATOR_LEADER)) {
+            LOGGER.log(Level.INFO,
+                    "[DICTATOR LEADER] Updated my round but will not broadcast round change or change leader");
+            return;
+        }
+
         updateLeader();
 
         int round = existingConsensus.getCurrentRound();
@@ -903,6 +915,11 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
     // this does not change round, it just changes the leader according to the round in the node state
     private void updateLeader() {
+        if (config.hasFailureType(ProcessConfig.FailureType.DICTATOR_LEADER)) {
+
+            LOGGER.log(Level.INFO, "I am Dictator Leader. supposed to change leader but I am staying as leader");
+            return;
+        }
         int round = instanceInfo.get(consensusInstance.get()).getCurrentRound();
         int nextLeaderIndex = leaderByIndex(round);
 
