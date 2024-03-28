@@ -17,6 +17,7 @@ server_configs = [
     "message_delay.json",
     "message_delay_small_client.json",
     "silent_leader.json",
+    "drop_config.json",
     "dictator_leader.json"
 ]
 

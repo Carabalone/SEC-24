@@ -10,6 +10,7 @@ public class ProcessConfig {
         BYZANTINE("BYZANTINE"),
         MESSAGE_DELAY("MESSAGE_DELAY"),
         SILENT_LEADER("SILENT_LEADER"),
+        DROP("DROP"),
         DICTATOR_LEADER("DICTATOR_LEADER");
 
         String type;
