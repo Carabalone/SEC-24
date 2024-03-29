@@ -113,7 +113,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
     }
 
     public ConsensusMessage createConsensusMessage(Block block, int instance, int round) {
-        PrePrepareMessage prePrepareMessage = new PrePrepareMessage(block.toJson());
+        PrePrepareMessage prePrepareMessage = new PrePrepareMessage(Block.getBlockJson(block));
 
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PRE_PREPARE)
                 .setConsensusInstance(instance)
@@ -379,7 +379,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
             sendersMessage.forEach(System.out::println);
 
             // TODO: CUIDADO COM OS TOJSON
-            CommitMessage c = new CommitMessage(preparedBlock.get().toJson());
+            CommitMessage c = new CommitMessage(Block.getBlockJson(preparedBlock.get()));
             instance.setCommitMessage(c);
 
             sendersMessage.forEach(senderMessage -> {
@@ -393,6 +393,10 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
                 nodesLink.send(senderMessage.getSenderId(), m);
             });
+        } else if (preparedBlock.isEmpty()) {
+            System.out.println("[PREPARE] There is no quorum for this instance and round");
+        } else {
+            System.out.println("[PREPARE] there is quorum but prepared round < current round");
         }
     }
 
@@ -545,7 +549,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         // TODO: CUIDADO COM OS TOJSON
         RoundChangeMessage roundChangeMessage = new RoundChangeMessage(localInstance, round,
                                                 existingConsensus.getPreparedRound(),
-                                                existingConsensus.getPreparedBlock().toJson());
+                                                Block.getBlockJson(existingConsensus.getPreparedBlock()));
 
         existingConsensus.setRoundChangeMessage(roundChangeMessage);
 
@@ -611,7 +615,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 // WARNING: idk if instance should be the local instance instead
                 RoundChangeMessage roundChangeMessage = new RoundChangeMessage(consensusInstance, selected.get().getRound(),
                         instance.getPreparedRound(),
-                        instance.getPreparedBlock().toJson());
+                        Block.getBlockJson(instance.getPreparedBlock()));
 
                 instance.setRoundChangeMessage(roundChangeMessage);
 
@@ -796,11 +800,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
             //          (pr, value) = HighestPrepared(Qrc)
             boolean highestPreparedPredicate = prepareQuorum.stream()
                     .allMatch(m -> m.getRound() == highestPreparedRound &&
-                            m.deserializePrepareMessage().getBlock().equals(highestPreparedBlock));
-
-            boolean testPredicate = existsPrepareQuorum.get().equals(highestPreparedBlock);
-
-            LOGGER.log(Level.INFO, MessageFormat.format("[RC] HighestPReparedPRedicate is {0} and test predicate is {1}", highestPreparedPredicate, testPredicate));
+                            m.deserializePrepareMessage().getBlock().equals(Block.getBlockJson(highestPreparedBlock)));
 
             LOGGER.log(
                     Level.INFO,
@@ -880,7 +880,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                     //          (pr, value) = HighestPrepared(Qrc)
                     boolean highestPreparedPredicate = prepareQuorum.stream()
                             .allMatch(m -> m.getRound() == highestPreparedRound &&
-                                      m.deserializePrepareMessage().getBlock().equals(highestPreparedValue));
+                                      m.deserializePrepareMessage().getBlock().equals(Block.getBlockJson(highestPreparedValue)));
 
                     return nullPredicate || highestPreparedPredicate;
             }

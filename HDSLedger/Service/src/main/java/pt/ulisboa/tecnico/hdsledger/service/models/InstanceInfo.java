@@ -41,6 +41,12 @@ public class InstanceInfo {
         return preparedBlock;
     }
 
+    public String getPreparedBlockString() {
+        if (preparedBlock == null)
+            return null;
+        else
+            return preparedBlock.toJson();
+    }
     public void setPreparedBlock(Block preparedBlock) { this.preparedBlock = preparedBlock; }
 
     public Block getInputBlock() {

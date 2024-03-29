@@ -104,25 +104,32 @@ public class Library {
     }
 
     // Mandar email pro Sidnei pq o enunciado n faz sentido querer a public key do destino
-    public PublicKey getPublicKey(String accountId) {
-        ProcessConfig accountConfig = Arrays.stream(this.clientConfigs).filter(c -> c.getId().equals(accountId)).findFirst().get();
+    public Optional<PublicKey> getPublicKey(String accountId) {
+        Optional<ProcessConfig> accountConfig = Arrays.stream(this.clientConfigs).filter(c -> c.getId().equals(accountId)).findFirst();
+
+        if (accountConfig.isEmpty())
+            return Optional.empty();
 
         PublicKey accountPubKey;
         try {
-            accountPubKey = DigitalSignature.readPublicKey(accountConfig.getPublicKeyPath());
+            accountPubKey = DigitalSignature.readPublicKey(accountConfig.get().getPublicKeyPath());
         } catch (Exception e) {
             throw new HDSSException(ErrorMessage.FailedToReadPublicKey);
         }
 
-        return accountPubKey;
+        return Optional.of(accountPubKey);
     }
 
     // Pensar melhor no caso bizantino
     public void checkBalance(String clientId) {
         int clientRequestId = this.requestId.getAndIncrement();
-        PublicKey clientPublicKey = getPublicKey(clientId);
+        Optional<PublicKey> clientPublicKey = getPublicKey(clientId);
+        if (clientPublicKey.isEmpty()) {
+            System.out.println("Receiver public key does not exist, not continuing operation");
+            return;
+        }
 
-        LedgerRequestBalance request = new LedgerRequestBalance(Message.Type.BALANCE, this.config.getId(), clientId, clientPublicKey);
+        LedgerRequestBalance request = new LedgerRequestBalance(Message.Type.BALANCE, this.config.getId(), clientId, clientPublicKey.get());
         String serializedRequest = new Gson().toJson(request);
         String signature;
 

@@ -48,6 +48,7 @@ public class MessageBucket {
         bucket.get(instance).get(round).values().forEach((message) -> {
             PrepareMessage prepareMessage = message.deserializePrepareMessage();
             Block block = Block.fromJson(prepareMessage.getBlock());
+
             frequency.put(block, frequency.getOrDefault(block, 0) + 1);
         });
 
