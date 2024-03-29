@@ -2,6 +2,7 @@ package pt.ulisboa.tecnico.hdsledger.service.services;
 
 import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.communication.*;
+import pt.ulisboa.tecnico.hdsledger.service.models.Block;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
 import java.io.IOException;
@@ -69,7 +70,9 @@ public class BlockchainService implements UDPService {
         if (!DigitalSignature.verifySignature(ledgerRequest.getValue(), ledgerRequest.getSignature(), clientConfig.getPublicKeyPath()))
             throw new HDSSException(ErrorMessage.InvalidSignature);
 
-        this.nodeService.startConsensus(ledgerRequest.getValue());
+        Block blockToAppend = new Block();
+        blockToAppend.addRequest(message);
+        this.nodeService.startConsensus(blockToAppend);
         while (!consensusReached);
         System.out.println("[BLOCKCHAIN SERVICE]: Consensus reached");
 

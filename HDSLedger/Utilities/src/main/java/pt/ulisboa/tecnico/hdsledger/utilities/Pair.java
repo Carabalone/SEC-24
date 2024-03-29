@@ -21,7 +21,7 @@ public class Pair<T, U> {
         return first;
     }
 
-    public U getPreparedValue() {
+    public U getPreparedBlock() {
         return second;
     }
 

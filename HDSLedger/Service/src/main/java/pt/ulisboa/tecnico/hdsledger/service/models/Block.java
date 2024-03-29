@@ -1,7 +1,8 @@
 package pt.ulisboa.tecnico.hdsledger.service.models;
 
-import java.util.ArrayList;
 import java.util.List;
+
+import com.google.gson.Gson;
 
 import pt.ulisboa.tecnico.hdsledger.communication.LedgerRequest;
 
@@ -31,4 +32,8 @@ public class Block {
     public void setConsensusInstance(int consensusInstance) {
         this.consensusInstance = consensusInstance;
     }
+
+    public String toJson() { return new Gson().toJson(this); }
+
+    public static Block fromJson(String json) { return new Gson().fromJson(json, Block.class); }
 }

@@ -10,14 +10,14 @@ public class RoundChangeMessage {
 
     private int preparedRound;
 
-    private String preparedValue;
+    private String preparedBlock;
 
 
-    public RoundChangeMessage(int consensusInstance, int currentRound, int preparedRound, String preparedValue) {
+    public RoundChangeMessage(int consensusInstance, int currentRound, int preparedRound, String preparedBlock) {
         this.consensusInstance = consensusInstance;
         this.currentRound = currentRound;
         this.preparedRound = preparedRound;
-        this.preparedValue = preparedValue;
+        this.preparedBlock = preparedBlock;
     }
 
 
@@ -45,12 +45,12 @@ public class RoundChangeMessage {
         this.preparedRound = preparedRound;
     }
 
-    public String getPreparedValue() {
-        return preparedValue;
+    public String getPreparedBlock() {
+        return preparedBlock;
     }
 
-    public void setPreparedValue(String preparedValue) {
-        this.preparedValue = preparedValue;
+    public void setPreparedBlock(String preparedBlock) {
+        this.preparedBlock = preparedBlock;
     }
 
     public String toJson() {
@@ -63,7 +63,7 @@ public class RoundChangeMessage {
                 "consensusInstance=" + consensusInstance +
                 ", currentRound=" + currentRound +
                 ", preparedRound=" + preparedRound +
-                ", preparedValue='" + preparedValue + '\'' +
+                ", preparedValue='" + preparedBlock + '\'' +
                 '}';
     }
 }

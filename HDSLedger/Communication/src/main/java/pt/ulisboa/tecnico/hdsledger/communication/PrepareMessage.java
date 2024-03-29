@@ -4,22 +4,20 @@ import com.google.gson.Gson;
 
 public class PrepareMessage {
 
-    private String value;
+    private String block;
 
     private String leaderSignature;
 
-    public PrepareMessage(String value/*, String leaderSignature*/) {
-        this.value = value;
+    public PrepareMessage(String block/*, String leaderSignature*/) {
+        this.block = block;
         this.leaderSignature = "TODO: tirar";
     }
 
-    public String getValue() {
-        return value;
+    public String getBlock() {
+        return block;
     }
 
-    public void setValue(String value) {
-        this.value = value;
-    }
+    public void setBlock(String block) { this.block = block; }
 
     public String getLeaderSignature() {
         return leaderSignature;
