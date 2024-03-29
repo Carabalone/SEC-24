@@ -20,7 +20,8 @@ server_configs = [
     "drop_config.json",
     "dictator_leader.json",
     "bad_consensus_config.json",
-    "fake_leader_config.json"
+    "fake_leader_config.json",
+    "leader_spoofing.json"
 ]
 
 index = 0
