@@ -175,6 +175,9 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
             LOGGER.log(Level.INFO,
                 MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
+            value = config.hasFailureType(ProcessConfig.FailureType.LEADER_SPOOFING) ?
+                    "sporting" :
+                    value;
 
             this.nodesLink.broadcast(this.createConsensusMessage(value, localConsensusInstance, instance.getCurrentRound()));
         }
@@ -217,8 +220,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
         LOGGER.log(Level.INFO,
                 MessageFormat.format(
-                        "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3}",
-                        config.getId(), senderId, consensusInstance, round));
+                        "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3}, Value {4}",
+                        config.getId(), senderId, consensusInstance, round, value));
 
         // Verify if pre-prepare was sent by leader
         if (!isLeader(senderId)) {
@@ -266,6 +269,12 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         PrepareMessage prepareMessage = config.hasFailureType(ProcessConfig.FailureType.LEADER_SPOOFING) ?
                 new PrepareMessage("sporting") :
                 new PrepareMessage(prePrepareMessage.getValue());
+
+
+        LOGGER.log(Level.INFO,
+                MessageFormat.format(
+                        "Sending prepare message with VALUE: {0} ",
+                        prepareMessage.getValue()));
 
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PREPARE)
                 .setConsensusInstance(consensusInstance)
