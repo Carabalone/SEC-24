@@ -12,10 +12,7 @@ import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilde
 import pt.ulisboa.tecnico.hdsledger.service.models.Block;
 import pt.ulisboa.tecnico.hdsledger.service.models.InstanceInfo;
 import pt.ulisboa.tecnico.hdsledger.service.models.MessageBucket;
-import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
-import pt.ulisboa.tecnico.hdsledger.utilities.HDSTimer;
-import pt.ulisboa.tecnico.hdsledger.utilities.Pair;
-import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
+import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
 
 public class NodeService implements UDPService, HDSTimer.TimerListener {
@@ -23,6 +20,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
     private static final CustomLogger LOGGER = new CustomLogger(NodeService.class.getName());
     // Nodes configurations
     private final ProcessConfig[] nodesConfig;
+
+    private final ProcessConfig[] clientsConfig;
 
     // Current node is leader
     private final ProcessConfig config;
@@ -51,11 +50,11 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
     private final AtomicInteger lastDecidedConsensusInstance = new AtomicInteger(0);
 
     // Ledger (for now, just a list of strings)
-    private ArrayList<String> ledger = new ArrayList<String>();
+    private ArrayList<Block> ledger = new ArrayList<Block>();
 
     private BlockchainService blockchainService;
 
-    private ArrayList<String> lastCommitedValue = new ArrayList<>();
+    private Block lastCommitedBlock = new Block();
 
     // consensusInstance -> timer
     private final Map<Integer, HDSTimer> timers = new ConcurrentHashMap<>();
@@ -66,7 +65,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
     private boolean started = false;
 
     public NodeService(Link nodesLink, Link clientsLink,
-                       ProcessConfig config, ProcessConfig leaderConfig, ProcessConfig[] nodesConfig) {
+                       ProcessConfig config, ProcessConfig leaderConfig, ProcessConfig[] nodesConfig, ProcessConfig[] clientsConfig) {
 
         this.nodesLink = nodesLink;
         this.clientsLink = clientsLink;
@@ -77,6 +76,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 leaderConfig;
 
         this.nodesConfig = nodesConfig;
+        this.clientsConfig = clientsConfig;
 
         this.prepareMessages = new MessageBucket(nodesConfig.length);
         this.commitMessages = new MessageBucket(nodesConfig.length);
@@ -96,7 +96,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         return this.consensusInstance.get();
     }
 
-    public ArrayList<String> getLedger() {
+    public ArrayList<Block> getLedger() {
         return this.ledger;
     }
 
@@ -469,28 +469,27 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
             // TODO: MUDAR ISSO AQUI
             LedgerRequest ledgerRequest = commitValue.get().getRequests().get(0);
-            LedgerRequestAppend ledgerRequestAppend = ledgerRequest.deserializeAppend();
-            String value = ledgerRequestAppend.getValue();
 
             // Append value to the ledger (must be synchronized to be thread-safe)
             synchronized(ledger) {
                 // Increment size of ledger to accommodate current instance
                 ledger.ensureCapacity(consensusInstance);
-                while (ledger.size() < consensusInstance - 1) {
-                    ledger.add("");
-                }
+                while (ledger.size() < consensusInstance - 1)
+                    ledger.add(null);
+
+                ledger.add(consensusInstance - 1, commitValue.get());
+                setLastCommittedBlock(commitValue.get());
                 
-                ledger.add(consensusInstance - 1, value);
-                setLastCommitedValue(value);
-                
-                LOGGER.log(Level.INFO,
+/*                LOGGER.log(Level.INFO,
                     MessageFormat.format(
                             "{0} - Current Ledger: {1}",
-                            config.getId(), String.join("", ledger)));
+                            config.getId(), String.join("", ledger)));*/
             }
 
             lastDecidedConsensusInstance.getAndIncrement();
-            append(value);
+
+            if (ledgerRequest.getType() == Message.Type.TRANSFER) transfer(ledgerRequest.deserializeTransfer());
+            //else if (ledgerRequest.getType() == Message.Type.BALANCE) checkBalance(ledgerRequest.deserializeBalance());
 
             LOGGER.log(Level.INFO,
                     MessageFormat.format(
@@ -499,18 +498,56 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         }
     }
 
-    private void setLastCommitedValue(String value) {
-        if (lastCommitedValue.size() > 0)
-            lastCommitedValue.remove(0);
-        lastCommitedValue.add(value);
+    public int getRequestValue(LedgerRequest ledgerRequest) {
+        if (ledgerRequest.getType() == Message.Type.BALANCE) {
+            LedgerRequestBalance ledgerRequestBalance = ledgerRequest.deserializeBalance();
+        }
+
+        else if (ledgerRequest.getType() == Message.Type.TRANSFER) {
+            LedgerRequestTransfer ledgerRequestTransfer = ledgerRequest.deserializeTransfer();
+            return ledgerRequestTransfer.getAmount();
+        }
+
+        return -1;
     }
 
-    public ArrayList<String> getLastCommitedValue() {
-        return lastCommitedValue;
+    public void transfer(LedgerRequestTransfer ledgerRequest) {
+        ProcessConfig sourceConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(ledgerRequest.getSenderId())).findFirst().get();
+        ProcessConfig destinationConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(ledgerRequest.getDestinationId())).findFirst().get();
+        int amount = ledgerRequest.getAmount();
+        int sourceBalance = sourceConfig.getBalance();
+        int destinationBalance = destinationConfig.getBalance();
+
+        if (sourceConfig.getId().equals(destinationConfig.getId())) throw new HDSSException(ErrorMessage.CannotTransferToSelf);
+        if (sourceBalance < amount) throw new HDSSException(ErrorMessage.InsufficientFunds);
+        if (sourceBalance <= 0) throw new HDSSException(ErrorMessage.CannotTranferNegativeAmount);
+
+        destinationConfig.setBalance(destinationBalance + amount);
+        sourceConfig.setBalance(sourceBalance - amount);
+
+        this.blockchainService.setConsensusReached(true);
     }
 
-    public void append(String value) {
-        setLastCommitedValue(value);
+/*    public void balanceOperation(LedgerRequestBalance ledgerRequest, LedgerRequest message) {
+        ProcessConfig clientToCheckConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(ledgerRequest.getClientId())).findFirst().get();
+
+        LedgerResponseBalance ledgerResponse = new LedgerResponseBalance(this.selfConfig.getId(), clientToCheckConfig.getBalance());
+    }*/
+
+    private synchronized void setLastCommittedBlock(Block block) {
+        synchronized (this.lastCommitedBlock) {
+            this.lastCommitedBlock = block;
+        }
+    }
+
+    public synchronized Block getLastCommittedBlock() {
+        synchronized (this.lastCommitedBlock) {
+            return this.lastCommitedBlock;
+        }
+    }
+
+    public void append(Block block) {
+        setLastCommittedBlock(block);
         this.blockchainService.setConsensusReached(true);
     }
 

@@ -6,13 +6,6 @@ import java.util.Objects;
 
 public class LedgerRequest extends Message {
 
-    @Override
-    public String toString() {
-        return "LedgerRequest{" +
-                "requestId=" + requestId +
-                '}';
-    }
-
     // Serialized request
     private String request;
 
@@ -55,6 +48,10 @@ public class LedgerRequest extends Message {
         return clientSignature;
     }
 
+    public void setClientSignature(String clientSignature) {
+        this.clientSignature = clientSignature;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -64,11 +61,14 @@ public class LedgerRequest extends Message {
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hash(request, clientSignature, requestId);
+    public String toString() {
+        return "LedgerRequest{" +
+                "requestId=" + requestId +
+                '}';
     }
 
-    public void setClientSignature(String clientSignature) {
-        this.clientSignature = clientSignature;
+    @Override
+    public int hashCode() {
+        return Objects.hash(request, clientSignature, requestId);
     }
 }
