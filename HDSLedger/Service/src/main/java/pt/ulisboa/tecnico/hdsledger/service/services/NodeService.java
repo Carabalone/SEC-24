@@ -9,9 +9,7 @@ import java.util.logging.Level;
 
 import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
-import pt.ulisboa.tecnico.hdsledger.service.models.Block;
-import pt.ulisboa.tecnico.hdsledger.service.models.InstanceInfo;
-import pt.ulisboa.tecnico.hdsledger.service.models.MessageBucket;
+import pt.ulisboa.tecnico.hdsledger.service.models.*;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
 
@@ -50,7 +48,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
     private final AtomicInteger lastDecidedConsensusInstance = new AtomicInteger(0);
 
     // Ledger (for now, just a list of strings)
-    private ArrayList<Block> ledger = new ArrayList<Block>();
+    //private ArrayList<Block> ledger = new ArrayList<Block>();
+    private Ledger ledger = new Ledger();
 
     private BlockchainService blockchainService;
 
@@ -78,6 +77,14 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         this.nodesConfig = nodesConfig;
         this.clientsConfig = clientsConfig;
 
+        Arrays.stream(nodesConfig).forEach(n -> {
+            ledger.addAccount(new Account(n.getId(), n.getBalance(), Account.Type.NODE));
+        });
+
+        Arrays.stream(clientsConfig).forEach(n -> {
+            ledger.addAccount(new Account(n.getId(), n.getBalance(), Account.Type.CLIENT));
+        });
+
         this.prepareMessages = new MessageBucket(nodesConfig.length);
         this.commitMessages = new MessageBucket(nodesConfig.length);
         this.roundChangeMessages = new MessageBucket(nodesConfig.length);
@@ -96,8 +103,12 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         return this.consensusInstance.get();
     }
 
-    public ArrayList<Block> getLedger() {
-        return this.ledger;
+    public int getLastDecidedConsensusInstance() {
+        return lastDecidedConsensusInstance.get();
+    }
+
+    public Ledger getLedger() {
+        return ledger;
     }
 
     private boolean isLeader(String id) {
@@ -484,9 +495,9 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 // Increment size of ledger to accommodate current instance
                 ledger.ensureCapacity(consensusInstance);
                 while (ledger.size() < consensusInstance - 1)
-                    ledger.add(null);
+                    ledger.addBlock(null);
 
-                ledger.add(consensusInstance - 1, commitValue.get());
+                ledger.addBlockAt(consensusInstance - 1, commitValue.get());
                 setLastCommittedBlock(commitValue.get());
                 
 /*                LOGGER.log(Level.INFO,
@@ -507,7 +518,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         }
     }
 
-    public int getRequestValue(LedgerRequest ledgerRequest) {
+    public long getRequestValue(LedgerRequest ledgerRequest) {
         if (ledgerRequest.getType() == Message.Type.BALANCE) {
             LedgerRequestBalance ledgerRequestBalance = ledgerRequest.deserializeBalance();
         }
@@ -521,20 +532,28 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
     }
 
     public void transfer(LedgerRequestTransfer ledgerRequest) {
-        ProcessConfig sourceConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(ledgerRequest.getSenderId())).findFirst().get();
-        ProcessConfig destinationConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(ledgerRequest.getDestinationId())).findFirst().get();
-        int amount = ledgerRequest.getAmount();
-        int sourceBalance = sourceConfig.getBalance();
-        int destinationBalance = destinationConfig.getBalance();
+        Optional<Account> sourceAccountOpt = ledger.getAccount(ledgerRequest.getSenderId());
+        Optional<Account> destinationAccountOpt = ledger.getAccount(ledgerRequest.getDestinationId());
 
-        if (sourceConfig.getId().equals(destinationConfig.getId())) throw new HDSSException(ErrorMessage.CannotTransferToSelf);
-        if (sourceBalance < amount) throw new HDSSException(ErrorMessage.InsufficientFunds);
-        if (sourceBalance <= 0) throw new HDSSException(ErrorMessage.CannotTranferNegativeAmount);
+        sourceAccountOpt.ifPresentOrElse(sourceAccount -> {
+            destinationAccountOpt.ifPresentOrElse(destinationAccount -> {
 
-        destinationConfig.setBalance(destinationBalance + amount);
-        sourceConfig.setBalance(sourceBalance - amount);
+                long amount = ledgerRequest.getAmount();
+                long sourceBalance = sourceAccount.getBalance();
+                long destinationBalance = destinationAccount.getBalance();
 
-        this.blockchainService.setConsensusReached(true);
+                if (sourceAccount.getId().equals(destinationAccount.getId())) throw new HDSSException(ErrorMessage.CannotTransferToSelf);
+                if (sourceBalance < amount) throw new HDSSException(ErrorMessage.InsufficientFunds);
+                if (sourceBalance <= 0) throw new HDSSException(ErrorMessage.CannotTranferNegativeAmount);
+
+                destinationAccount.addBalance(amount);
+                sourceAccount.subtractBalance(amount);
+
+                this.blockchainService.setConsensusReached(true);
+
+            }, () -> { throw new HDSSException(ErrorMessage.CannotFindAccount); });
+        }, () -> { throw new HDSSException(ErrorMessage.CannotFindAccount); });
+
     }
 
 /*    public void balanceOperation(LedgerRequestBalance ledgerRequest, LedgerRequest message) {
@@ -558,6 +577,13 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
     public void append(Block block) {
         setLastCommittedBlock(block);
         this.blockchainService.setConsensusReached(true);
+    }
+
+    public void getBalanceAndJustification(String clientID) {
+        ProcessConfig clientConfig;
+        synchronized (clientsConfig) {
+            clientConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(clientID)).findFirst().get();
+        }
     }
 
     public void uponTimerExpire() {

@@ -13,7 +13,8 @@ public enum ErrorMessage {
     ClientNotFound("Client not found"),
     CannotTranferNegativeAmount("Cannot transfer a negative amount"),
     CannotTransferToSelf("Cannot transfer to self"),
-    InsufficientFunds("Insufficient funds");
+    InsufficientFunds("Insufficient funds"),
+    CannotFindAccount("Cannot Find account");
 
     private final String message;
 

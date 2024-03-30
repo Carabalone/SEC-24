@@ -178,8 +178,8 @@ public class Library {
 
         LedgerResponse ledgerResponse = (LedgerResponse) responses.get(clientRequestId).get(0);
         LedgerResponseTransfer ledgerResponseTransfer = ledgerResponse.deserializeTransfer();
-        int sourceBalance = ledgerResponseTransfer.getSourceBalance();
-        int destinationBalance = ledgerResponseTransfer.getDestinationBalance();
+        long sourceBalance = ledgerResponseTransfer.getSourceBalance();
+        long destinationBalance = ledgerResponseTransfer.getDestinationBalance();
 
         System.out.println("[LIBRARY] Transferred " + amount + " to " + destinationId);
         System.out.printf("[LIBRARY] My balance: %d\n", sourceBalance);

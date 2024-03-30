@@ -2,12 +2,14 @@ package pt.ulisboa.tecnico.hdsledger.service.services;
 
 import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.communication.*;
+import pt.ulisboa.tecnico.hdsledger.service.models.Account;
 import pt.ulisboa.tecnico.hdsledger.service.models.Block;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
 import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.logging.Level;
 
 public class BlockchainService implements UDPService {
@@ -49,12 +51,19 @@ public class BlockchainService implements UDPService {
     }
 
     private void sendTransferResponse(LedgerRequestTransfer ledgerRequest, int requestId) {
-        ProcessConfig sourceConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(ledgerRequest.getSenderId())).findFirst().get();
-        ProcessConfig destinationConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(ledgerRequest.getDestinationId())).findFirst().get();
+        Optional<Account> sourceAccountOpt = nodeService.getLedger().getAccount(ledgerRequest.getSenderId());
+        Optional<Account> destinationAccountOpt = nodeService.getLedger().getAccount(ledgerRequest.getDestinationId());
 
-        LedgerResponseTransfer ledgerResponse = new LedgerResponseTransfer(this.selfConfig.getId(), sourceConfig.getBalance(), destinationConfig.getBalance());
-        sendResponse(ledgerResponse, ledgerRequest.getSenderId(), requestId, Message.Type.TRANSFER);
-        this.setConsensusReached(false);
+        sourceAccountOpt.ifPresentOrElse(sourceAccount -> {
+            destinationAccountOpt.ifPresentOrElse(destinationAccount -> {
+
+                LedgerResponseTransfer ledgerResponse = new LedgerResponseTransfer(this.selfConfig.getId(), sourceAccount.getBalance(), destinationAccount.getBalance());
+                sendResponse(ledgerResponse, ledgerRequest.getSenderId(), requestId, Message.Type.TRANSFER);
+                this.setConsensusReached(false);
+
+            }, () -> { throw new HDSSException(ErrorMessage.CannotFindAccount); });
+        }, () -> { throw new HDSSException(ErrorMessage.CannotFindAccount); });
+
     }
 
 /*    public void append(LedgerRequest message) {
@@ -89,9 +98,12 @@ public class BlockchainService implements UDPService {
     }
 
     public void weakBalanceRead(LedgerRequestBalance ledgerRequest, LedgerRequest message) {
-        ProcessConfig clientToCheckConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(ledgerRequest.getClientId())).findFirst().get();
+        long balance = nodeService.getLedger().getAccount(ledgerRequest.getClientId())
+                .orElseThrow(() -> new HDSSException(ErrorMessage.CannotFindAccount))
+                .getBalance();
 
-        LedgerResponseBalance ledgerResponse = new LedgerResponseBalance(this.selfConfig.getId(), clientToCheckConfig.getBalance());
+        LedgerResponseBalance ledgerResponse = new LedgerResponseBalance(this.selfConfig.getId(),
+                                            balance, nodeService.getLastDecidedConsensusInstance());
         sendResponse(ledgerResponse, message.getSenderId(), message.getRequestId(), Message.Type.BALANCE);
     }
 
