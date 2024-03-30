@@ -9,12 +9,10 @@ import java.util.logging.Level;
 
 import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
+import pt.ulisboa.tecnico.hdsledger.service.models.Block;
 import pt.ulisboa.tecnico.hdsledger.service.models.InstanceInfo;
 import pt.ulisboa.tecnico.hdsledger.service.models.MessageBucket;
-import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
-import pt.ulisboa.tecnico.hdsledger.utilities.HDSTimer;
-import pt.ulisboa.tecnico.hdsledger.utilities.Pair;
-import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
+import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
 
 public class NodeService implements UDPService, HDSTimer.TimerListener {
@@ -22,6 +20,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
     private static final CustomLogger LOGGER = new CustomLogger(NodeService.class.getName());
     // Nodes configurations
     private final ProcessConfig[] nodesConfig;
+
+    private final ProcessConfig[] clientsConfig;
 
     // Current node is leader
     private final ProcessConfig config;
@@ -50,11 +50,11 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
     private final AtomicInteger lastDecidedConsensusInstance = new AtomicInteger(0);
 
     // Ledger (for now, just a list of strings)
-    private ArrayList<String> ledger = new ArrayList<String>();
+    private ArrayList<Block> ledger = new ArrayList<Block>();
 
     private BlockchainService blockchainService;
 
-    private ArrayList<String> lastCommitedValue = new ArrayList<>();
+    private Block lastCommitedBlock = new Block();
 
     // consensusInstance -> timer
     private final Map<Integer, HDSTimer> timers = new ConcurrentHashMap<>();
@@ -65,7 +65,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
     private boolean started = false;
 
     public NodeService(Link nodesLink, Link clientsLink,
-                       ProcessConfig config, ProcessConfig leaderConfig, ProcessConfig[] nodesConfig) {
+                       ProcessConfig config, ProcessConfig leaderConfig, ProcessConfig[] nodesConfig, ProcessConfig[] clientsConfig) {
 
         this.nodesLink = nodesLink;
         this.clientsLink = clientsLink;
@@ -76,6 +76,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 leaderConfig;
 
         this.nodesConfig = nodesConfig;
+        this.clientsConfig = clientsConfig;
 
         this.prepareMessages = new MessageBucket(nodesConfig.length);
         this.commitMessages = new MessageBucket(nodesConfig.length);
@@ -95,7 +96,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         return this.consensusInstance.get();
     }
 
-    public ArrayList<String> getLedger() {
+    public ArrayList<Block> getLedger() {
         return this.ledger;
     }
 
@@ -111,8 +112,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         this.blockchainService = blockchainService;
     }
 
-    public ConsensusMessage createConsensusMessage(String value, int instance, int round) {
-        PrePrepareMessage prePrepareMessage = new PrePrepareMessage(value);
+    public ConsensusMessage createConsensusMessage(Block block, int instance, int round) {
+        PrePrepareMessage prePrepareMessage = new PrePrepareMessage(Block.getBlockJson(block));
 
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PRE_PREPARE)
                 .setConsensusInstance(instance)
@@ -130,7 +131,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
      *
      * @param inputValue Value to value agreed upon
      */
-    public void startConsensus(String value) {
+    public void startConsensus(Block block) {
         if (config.getFailureType() == ProcessConfig.FailureType.CRASH) {
             LOGGER.log(
                     Level.INFO,
@@ -143,7 +144,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         int localConsensusInstance = this.consensusInstance.incrementAndGet();
 
         LOGGER.log(Level.WARNING, MessageFormat.format("[NODE] got consensus {0}", localConsensusInstance));
-        InstanceInfo existingConsensus = this.instanceInfo.put(localConsensusInstance, new InstanceInfo(value));
+        InstanceInfo existingConsensus = this.instanceInfo.put(localConsensusInstance, new InstanceInfo(block));
 
         // If startConsensus was already called for a given round
         if (existingConsensus != null) {
@@ -179,7 +180,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                     "sporting" :
                     value;
 
-            this.nodesLink.broadcast(this.createConsensusMessage(value, localConsensusInstance, instance.getCurrentRound()));
+            this.nodesLink.broadcast(this.createConsensusMessage(block, localConsensusInstance, instance.getCurrentRound()));
         }
 
         else {
@@ -216,7 +217,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
         PrePrepareMessage prePrepareMessage = message.deserializePrePrepareMessage();
 
-        String value = prePrepareMessage.getValue();
+        Block block = Block.fromJson(prePrepareMessage.getBlock());
 
         LOGGER.log(Level.INFO,
                 MessageFormat.format(
@@ -233,7 +234,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         }
 
         // Set instance value
-        this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));
+        this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(block));
 
         // ignore messages from previous rounds
         if (message.getRound() < instanceInfo.get(consensusInstance).getCurrentRound()) {
@@ -268,7 +269,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
         PrepareMessage prepareMessage = config.hasFailureType(ProcessConfig.FailureType.LEADER_SPOOFING) ?
                 new PrepareMessage("sporting") :
-                new PrepareMessage(prePrepareMessage.getValue());
+                new PrepareMessage(prePrepareMessage.getBlock());
 
 
         LOGGER.log(Level.INFO,
@@ -310,7 +311,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
         PrepareMessage prepareMessage = message.deserializePrepareMessage();
 
-        String value = prepareMessage.getValue();
+        Block block = Block.fromJson(prepareMessage.getBlock());
 
         // ignore messages from previous rounds
         if (message.getRound() < instanceInfo.get(this.consensusInstance.get()).getCurrentRound()) return;
@@ -339,7 +340,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         }
 
         // Set instance values
-        this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));
+        this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(block));
         InstanceInfo instance = this.instanceInfo.get(consensusInstance);
 
         // ignore messages from previous rounds
@@ -375,18 +376,19 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         }
 
         // Find value with valid quorum
-        Optional<String> preparedValue = prepareMessages.hasValidPrepareQuorum(config.getId(), consensusInstance, round);
-        if (preparedValue.isPresent() && instance.getPreparedRound() < round) {
-            instance.setPreparedValue(preparedValue.get());
+        Optional<Block> preparedBlock = prepareMessages.hasValidPrepareQuorum(config.getId(), consensusInstance, round);
+        if (preparedBlock.isPresent() && instance.getPreparedRound() < round) {
+            instance.setPreparedBlock(preparedBlock.get());
             instance.setPreparedRound(round);
 
             // Must reply to prepare message senders
             Collection<ConsensusMessage> sendersMessage = prepareMessages.getMessages(consensusInstance, round).values();
 
-            System.out.println("[PREPARE] Received a prepare quorum for value " + value + ", Messages: ");
+            System.out.println("[PREPARE] Received a prepare quorum for block " + block + ", Messages: ");
             sendersMessage.forEach(System.out::println);
 
-            CommitMessage c = new CommitMessage(preparedValue.get());
+            // TODO: CUIDADO COM OS TOJSON
+            CommitMessage c = new CommitMessage(Block.getBlockJson(preparedBlock.get()));
             instance.setCommitMessage(c);
 
             sendersMessage.forEach(senderMessage -> {
@@ -400,6 +402,10 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
                 nodesLink.send(senderMessage.getSenderId(), m);
             });
+        } else if (preparedBlock.isEmpty()) {
+            System.out.println("[PREPARE] There is no quorum for this instance and round");
+        } else {
+            System.out.println("[PREPARE] there is quorum but prepared round < current round");
         }
     }
 
@@ -455,8 +461,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
             return;
         }
 
-        Optional<String> commitValue = commitMessages.hasValidCommitQuorum(config.getId(),
-                consensusInstance, round);
+        Optional<Block> commitValue = commitMessages.hasValidCommitQuorum(config.getId(), consensusInstance, round);
 
         if (commitValue.isPresent() && instance.getCommittedRound() < round) {
             // stop timer
@@ -471,27 +476,29 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
             instance = this.instanceInfo.get(consensusInstance);
             instance.setCommittedRound(round);
 
-            String value = commitValue.get();
+            // TODO: MUDAR ISSO AQUI
+            LedgerRequest ledgerRequest = commitValue.get().getRequests().get(0);
 
             // Append value to the ledger (must be synchronized to be thread-safe)
             synchronized(ledger) {
                 // Increment size of ledger to accommodate current instance
                 ledger.ensureCapacity(consensusInstance);
-                while (ledger.size() < consensusInstance - 1) {
-                    ledger.add("");
-                }
+                while (ledger.size() < consensusInstance - 1)
+                    ledger.add(null);
+
+                ledger.add(consensusInstance - 1, commitValue.get());
+                setLastCommittedBlock(commitValue.get());
                 
-                ledger.add(consensusInstance - 1, value);
-                setLastCommitedValue(value);
-                
-                LOGGER.log(Level.INFO,
+/*                LOGGER.log(Level.INFO,
                     MessageFormat.format(
                             "{0} - Current Ledger: {1}",
-                            config.getId(), String.join("", ledger)));
+                            config.getId(), String.join("", ledger)));*/
             }
 
             lastDecidedConsensusInstance.getAndIncrement();
-            append(value);
+
+            if (ledgerRequest.getType() == Message.Type.TRANSFER) transfer(ledgerRequest.deserializeTransfer());
+            //else if (ledgerRequest.getType() == Message.Type.BALANCE) checkBalance(ledgerRequest.deserializeBalance());
 
             LOGGER.log(Level.INFO,
                     MessageFormat.format(
@@ -500,18 +507,56 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         }
     }
 
-    private void setLastCommitedValue(String value) {
-        if (lastCommitedValue.size() > 0)
-            lastCommitedValue.remove(0);
-        lastCommitedValue.add(value);
+    public int getRequestValue(LedgerRequest ledgerRequest) {
+        if (ledgerRequest.getType() == Message.Type.BALANCE) {
+            LedgerRequestBalance ledgerRequestBalance = ledgerRequest.deserializeBalance();
+        }
+
+        else if (ledgerRequest.getType() == Message.Type.TRANSFER) {
+            LedgerRequestTransfer ledgerRequestTransfer = ledgerRequest.deserializeTransfer();
+            return ledgerRequestTransfer.getAmount();
+        }
+
+        return -1;
     }
 
-    public ArrayList<String> getLastCommitedValue() {
-        return lastCommitedValue;
+    public void transfer(LedgerRequestTransfer ledgerRequest) {
+        ProcessConfig sourceConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(ledgerRequest.getSenderId())).findFirst().get();
+        ProcessConfig destinationConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(ledgerRequest.getDestinationId())).findFirst().get();
+        int amount = ledgerRequest.getAmount();
+        int sourceBalance = sourceConfig.getBalance();
+        int destinationBalance = destinationConfig.getBalance();
+
+        if (sourceConfig.getId().equals(destinationConfig.getId())) throw new HDSSException(ErrorMessage.CannotTransferToSelf);
+        if (sourceBalance < amount) throw new HDSSException(ErrorMessage.InsufficientFunds);
+        if (sourceBalance <= 0) throw new HDSSException(ErrorMessage.CannotTranferNegativeAmount);
+
+        destinationConfig.setBalance(destinationBalance + amount);
+        sourceConfig.setBalance(sourceBalance - amount);
+
+        this.blockchainService.setConsensusReached(true);
     }
 
-    public void append(String value) {
-        setLastCommitedValue(value);
+/*    public void balanceOperation(LedgerRequestBalance ledgerRequest, LedgerRequest message) {
+        ProcessConfig clientToCheckConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(ledgerRequest.getClientId())).findFirst().get();
+
+        LedgerResponseBalance ledgerResponse = new LedgerResponseBalance(this.selfConfig.getId(), clientToCheckConfig.getBalance());
+    }*/
+
+    private synchronized void setLastCommittedBlock(Block block) {
+        synchronized (this.lastCommitedBlock) {
+            this.lastCommitedBlock = block;
+        }
+    }
+
+    public synchronized Block getLastCommittedBlock() {
+        synchronized (this.lastCommitedBlock) {
+            return this.lastCommitedBlock;
+        }
+    }
+
+    public void append(Block block) {
+        setLastCommittedBlock(block);
         this.blockchainService.setConsensusReached(true);
     }
 
@@ -547,9 +592,10 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 "[TIMER] - Started Timer in uponTimerExpire");
         startOrRestartTimer(localInstance, round);
 
+        // TODO: CUIDADO COM OS TOJSON
         RoundChangeMessage roundChangeMessage = new RoundChangeMessage(localInstance, round,
                                                 existingConsensus.getPreparedRound(),
-                                                existingConsensus.getPreparedValue());
+                                                Block.getBlockJson(existingConsensus.getPreparedBlock()));
 
         existingConsensus.setRoundChangeMessage(roundChangeMessage);
 
@@ -615,7 +661,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 // WARNING: idk if instance should be the local instance instead
                 RoundChangeMessage roundChangeMessage = new RoundChangeMessage(consensusInstance, selected.get().getRound(),
                         instance.getPreparedRound(),
-                        instance.getPreparedValue());
+                        Block.getBlockJson(instance.getPreparedBlock()));
 
                 instance.setRoundChangeMessage(roundChangeMessage);
 
@@ -659,15 +705,15 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                         "[RC] Entered second predicate (There is a quorum) and I'm leader"
                 );
 
-                String value;
+                Block block;
 
                 // If HighestPrepared(Qrc) != ⊥
                 if (highestPrepared(quorum).isPresent())
-                    value = highestPrepared(quorum).get().getPreparedValue();
+                    block = Block.fromJson(highestPrepared(quorum).get().getPreparedBlock());
                 else
-                    value = instance.getInputValue();
+                    block = instance.getInputBlock();
 
-                ConsensusMessage consensusMessage = this.createConsensusMessage(value, consensusInstance, round);
+                ConsensusMessage consensusMessage = this.createConsensusMessage(block, consensusInstance, round);
 
                 //startOrRestartTimer(consensusInstance, round);
 
@@ -768,7 +814,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
         boolean nullPredicate = quorum.stream()
                 .map(ConsensusMessage::deserializeRoundChangeMessage)
-                .allMatch(m -> m.getPreparedRound() == -1 && m.getPreparedValue() == null);
+                .allMatch(m -> m.getPreparedRound() == -1 && m.getPreparedBlock() == null);
 
         LOGGER.log(
                 Level.INFO,
@@ -785,9 +831,9 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         }
 
         int highestPreparedRound = highestPreparedPair.get().getPreparedRound();
-        String highestPreparedValue = highestPreparedPair.get().getPreparedValue();
+        Block highestPreparedBlock = Block.fromJson(highestPreparedPair.get().getPreparedBlock());
 
-        Optional<String> existsPrepareQuorum = prepareMessages.hasValidPrepareQuorum(config.getId(), instance, highestPreparedRound);
+        Optional<Block> existsPrepareQuorum = prepareMessages.hasValidPrepareQuorum(config.getId(), instance, highestPreparedRound);
 
         if (existsPrepareQuorum.isPresent()) {
             LOGGER.log(Level.INFO,
@@ -800,11 +846,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
             //          (pr, value) = HighestPrepared(Qrc)
             boolean highestPreparedPredicate = prepareQuorum.stream()
                     .allMatch(m -> m.getRound() == highestPreparedRound &&
-                            m.deserializePrepareMessage().getValue().equals(highestPreparedValue));
-
-            boolean testPredicate = existsPrepareQuorum.get().equals(highestPreparedValue);
-
-            LOGGER.log(Level.INFO, MessageFormat.format("[RC] HighestPReparedPRedicate is {0} and test predicate is {1}", highestPreparedPredicate, testPredicate));
+                            m.deserializePrepareMessage().getBlock().equals(Block.getBlockJson(highestPreparedBlock)));
 
             LOGGER.log(
                     Level.INFO,
@@ -863,7 +905,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
             boolean nullPredicate = rcQuorum.stream()
                     .map(ConsensusMessage::deserializeRoundChangeMessage)
-                    .allMatch(m -> (m.getPreparedRound() == -1 && m.getPreparedValue() == null));
+                    .allMatch(m -> (m.getPreparedRound() == -1 && m.getPreparedBlock() == null));
 
             // end nullPredicate
             // begin highestPreparedPredicate
@@ -873,9 +915,9 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 return nullPredicate;
 
             int highestPreparedRound = highestPreparedPair.get().getPreparedRound();
-            String highestPreparedValue = highestPreparedPair.get().getPreparedValue();
+            Block highestPreparedValue = Block.fromJson(highestPreparedPair.get().getPreparedBlock());
 
-            Optional<String> existsPrepareQuorum = prepareMessages.hasValidPrepareQuorum(config.getId(), consensusInstance, highestPreparedRound);
+            Optional<Block> existsPrepareQuorum = prepareMessages.hasValidPrepareQuorum(config.getId(), consensusInstance, highestPreparedRound);
 
             if (existsPrepareQuorum.isPresent()) {
                 Collection<ConsensusMessage> prepareQuorum = prepareMessages.getMessages(consensusInstance, highestPreparedRound).values();
@@ -884,7 +926,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                     //          (pr, value) = HighestPrepared(Qrc)
                     boolean highestPreparedPredicate = prepareQuorum.stream()
                             .allMatch(m -> m.getRound() == highestPreparedRound &&
-                                      m.deserializePrepareMessage().getValue().equals(highestPreparedValue));
+                                      m.deserializePrepareMessage().getBlock().equals(Block.getBlockJson(highestPreparedValue)));
 
                     return nullPredicate || highestPreparedPredicate;
             }
@@ -914,8 +956,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         return quorum.stream()
                 .map(ConsensusMessage::deserializeRoundChangeMessage)
                 .max(Comparator.comparingInt(RoundChangeMessage::getPreparedRound))
-                .map(m -> new Pair<Integer, String>(m.getPreparedRound(), m.getPreparedValue()))
-                .filter(p -> p.getPreparedValue() != null)
+                .map(m -> new Pair<Integer, String>(m.getPreparedRound(), m.getPreparedBlock()))
+                .filter(p -> p.getPreparedBlock() != null)
                 .stream().findAny();
     }
 

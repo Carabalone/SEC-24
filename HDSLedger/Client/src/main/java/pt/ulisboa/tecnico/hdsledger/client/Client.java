@@ -62,7 +62,7 @@ public class Client {
 
                     case "balance" -> {
                         if (terms.length < 2)
-                            System.out.printf("bad input, usage: balance <clientId>");
+                            System.out.println("bad input, usage: balance <clientId>");
                         System.out.println("Sent request to check balance");
                         library.checkBalance(terms[1]);
                     }

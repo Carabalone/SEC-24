@@ -82,7 +82,6 @@ public class ConsensusMessage extends Message {
                 ", round=" + round +
                 ", replyTo='" + replyTo + '\'' +
                 ", replyToMessageId=" + replyToMessageId +
-                ", message='" + message + '\'' +
                 '}';
     }
 }

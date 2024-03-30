@@ -2,6 +2,7 @@ package pt.ulisboa.tecnico.hdsledger.service.services;
 
 import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.communication.*;
+import pt.ulisboa.tecnico.hdsledger.service.models.Block;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
 import java.io.IOException;
@@ -21,9 +22,9 @@ public class BlockchainService implements UDPService {
 
     private final ProcessConfig[] nodesConfig;
 
-    private final NodeService nodeService;
-
     private final ProcessConfig[] clientsConfig;
+
+    private final NodeService nodeService;
 
     private volatile boolean consensusReached;
 
@@ -48,18 +49,16 @@ public class BlockchainService implements UDPService {
         this.consensusReached = consensusReached;
     }
 
-    private LedgerResponseAppend getLedgerResponse() {
-        int consensusInstance = this.nodeService.getConsensusInstance();
+    private void sendTransferResponse(LedgerRequestTransfer ledgerRequest, int requestId) {
+        ProcessConfig sourceConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(ledgerRequest.getSenderId())).findFirst().get();
+        ProcessConfig destinationConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(ledgerRequest.getDestinationId())).findFirst().get();
 
-        LedgerResponseAppend ledgerResponse = new LedgerResponseAppend(this.selfConfig.getId(),
-                consensusInstance, this.nodeService.getLastCommitedValue());
-
-        ledgerResponse.setType(Message.Type.REPLY);
-        ledgerResponse.setValues(new ArrayList<>(this.nodeService.getLedger()));
-        return ledgerResponse;
+        LedgerResponseTransfer ledgerResponse = new LedgerResponseTransfer(this.selfConfig.getId(), sourceConfig.getBalance(), destinationConfig.getBalance());
+        sendResponse(ledgerResponse, ledgerRequest.getSenderId(), requestId, Message.Type.TRANSFER);
+        this.setConsensusReached(false);
     }
 
-    public void append(LedgerRequest message) {
+/*    public void append(LedgerRequest message) {
         ProcessConfig clientConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(message.getSenderId())).findFirst().get();
         LedgerRequestAppend ledgerRequest = message.deserializeAppend();
 
@@ -69,14 +68,16 @@ public class BlockchainService implements UDPService {
         if (!DigitalSignature.verifySignature(ledgerRequest.getValue(), ledgerRequest.getSignature(), clientConfig.getPublicKeyPath()))
             throw new HDSSException(ErrorMessage.InvalidSignature);
 
-        this.nodeService.startConsensus(ledgerRequest.getValue());
+        Block blockToAppend = new Block();
+        blockToAppend.addRequest(message);
+        this.nodeService.startConsensus(blockToAppend);
         while (!consensusReached);
         System.out.println("[BLOCKCHAIN SERVICE]: Consensus reached");
 
         LedgerResponseAppend ledgerResponse = getLedgerResponse();
         sendResponse(ledgerResponse, message.getSenderId(), message.getRequestId(), Message.Type.APPEND);
         this.setConsensusReached(false);
-    }
+    }*/
 
     public void checkBalance(LedgerRequest message) {
         ProcessConfig clientConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(message.getSenderId())).findFirst().get();
@@ -105,25 +106,13 @@ public class BlockchainService implements UDPService {
         if (!DigitalSignature.verifySignature(String.valueOf(ledgerRequest.getAmount()), ledgerRequest.getSignature(), clientConfig.getPublicKeyPath()))
             throw new HDSSException(ErrorMessage.InvalidSignature);
 
-        transferOperation(ledgerRequest, message.getRequestId());
-    }
+        Block blockToAppend = new Block();
+        blockToAppend.addRequest(message);
+        this.nodeService.startConsensus(blockToAppend);
+        while (!consensusReached);
+        System.out.println("[BLOCKCHAIN SERVICE]: Consensus reached");
 
-    public void transferOperation(LedgerRequestTransfer ledgerRequest, int requestId) {
-        ProcessConfig sourceConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(ledgerRequest.getSenderId())).findFirst().get();
-        ProcessConfig destinationConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(ledgerRequest.getDestinationId())).findFirst().get();
-        int amount = ledgerRequest.getAmount();
-        int sourceBalance = sourceConfig.getBalance();
-        int destinationBalance = destinationConfig.getBalance();
-
-        if (sourceConfig.getId().equals(destinationConfig.getId())) throw new HDSSException(ErrorMessage.CannotTransferToSelf);
-        if (sourceBalance < amount) throw new HDSSException(ErrorMessage.InsufficientFunds);
-        if (sourceBalance <= 0) throw new HDSSException(ErrorMessage.CannotTranferNegativeAmount);
-
-        destinationConfig.setBalance(destinationBalance + amount);
-        sourceConfig.setBalance(sourceBalance - amount);
-
-        LedgerResponseTransfer ledgerResponse = new LedgerResponseTransfer(this.selfConfig.getId(), sourceConfig.getBalance(), destinationConfig.getBalance());
-        sendResponse(ledgerResponse, ledgerRequest.getSenderId(), requestId, Message.Type.TRANSFER);
+        sendTransferResponse(ledgerRequest, message.getRequestId());
     }
 
     public void sendResponse(Message responseOperation, String clientId, int requestId, Message.Type type) {
@@ -149,7 +138,7 @@ public class BlockchainService implements UDPService {
                                 case APPEND -> {
                                     LOGGER.log(Level.INFO, MessageFormat.format("{0} - BLOCKCHAIN SERVICE: Received append request from {1}",
                                             selfConfig.getId(), message.getSenderId()));
-                                    append((LedgerRequest) message);
+                                    //append((LedgerRequest) message);
                                 }
 
                                 case BALANCE -> {
