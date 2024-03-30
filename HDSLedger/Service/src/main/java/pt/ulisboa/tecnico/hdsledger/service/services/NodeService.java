@@ -176,9 +176,9 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
             LOGGER.log(Level.INFO,
                 MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
-            value = config.hasFailureType(ProcessConfig.FailureType.LEADER_SPOOFING) ?
-                    "sporting" :
-                    value;
+            block = config.hasFailureType(ProcessConfig.FailureType.LEADER_SPOOFING) ?
+                    new Block("@@H4ck3d@@") :
+                    block;
 
             this.nodesLink.broadcast(this.createConsensusMessage(block, localConsensusInstance, instance.getCurrentRound()));
         }
@@ -222,7 +222,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         LOGGER.log(Level.INFO,
                 MessageFormat.format(
                         "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3}, Value {4}",
-                        config.getId(), senderId, consensusInstance, round, value));
+                        config.getId(), senderId, consensusInstance, round, block));
 
         // Verify if pre-prepare was sent by leader
         if (!isLeader(senderId)) {
@@ -268,14 +268,14 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         }
 
         PrepareMessage prepareMessage = config.hasFailureType(ProcessConfig.FailureType.LEADER_SPOOFING) ?
-                new PrepareMessage("sporting") :
+                new PrepareMessage(new Block("@@@H4ck3d@@@").toJson()) :
                 new PrepareMessage(prePrepareMessage.getBlock());
 
 
         LOGGER.log(Level.INFO,
                 MessageFormat.format(
                         "Sending prepare message with VALUE: {0} ",
-                        prepareMessage.getValue()));
+                        prepareMessage.getBlock()));
 
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PREPARE)
                 .setConsensusInstance(consensusInstance)

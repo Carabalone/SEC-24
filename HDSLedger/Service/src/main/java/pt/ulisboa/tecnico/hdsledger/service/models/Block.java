@@ -10,11 +10,18 @@ import pt.ulisboa.tecnico.hdsledger.communication.LedgerRequest;
 
 public class Block {
     private int consensusInstance;
+    private String description;
 
     private List<LedgerRequest> requests;
 
     public Block() {
         requests = new ArrayList<>();
+        description = "Standard Description";
+    }
+
+    public Block(String description) {
+        requests = new ArrayList<>();
+        this.description = description;
     }
 
     public void addRequest(LedgerRequest request) {
@@ -29,6 +36,13 @@ public class Block {
         this.requests = requests;
     }
 
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
     public int getConsensusInstance() {
         return consensusInstance;
     }

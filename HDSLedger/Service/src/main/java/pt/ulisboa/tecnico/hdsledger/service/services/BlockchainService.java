@@ -7,7 +7,6 @@ import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
 import java.io.IOException;
 import java.text.MessageFormat;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.logging.Level;
 
@@ -86,14 +85,19 @@ public class BlockchainService implements UDPService {
         if (!DigitalSignature.verifySignature(message.getRequest(), message.getClientSignature(), clientConfig.getPublicKeyPath()))
             throw new HDSSException(ErrorMessage.InvalidSignature);
 
-        balanceOperation(ledgerRequest, message);
+        weakBalanceRead(ledgerRequest, message);
     }
 
-    public void balanceOperation(LedgerRequestBalance ledgerRequest, LedgerRequest message) {
+    public void weakBalanceRead(LedgerRequestBalance ledgerRequest, LedgerRequest message) {
         ProcessConfig clientToCheckConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(ledgerRequest.getClientId())).findFirst().get();
 
         LedgerResponseBalance ledgerResponse = new LedgerResponseBalance(this.selfConfig.getId(), clientToCheckConfig.getBalance());
         sendResponse(ledgerResponse, message.getSenderId(), message.getRequestId(), Message.Type.BALANCE);
+    }
+
+    public void strongBalanceRead(LedgerRequestBalance ledgerRequest, LedgerRequest message) {
+        ProcessConfig clientToCheckConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(ledgerRequest.getClientId())).findFirst().get();
+
     }
 
     public void transfer(LedgerRequest message) {
