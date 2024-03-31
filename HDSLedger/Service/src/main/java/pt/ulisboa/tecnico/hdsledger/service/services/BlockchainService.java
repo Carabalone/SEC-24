@@ -105,9 +105,11 @@ public class BlockchainService implements UDPService {
         if (!DigitalSignature.verifySignature(String.valueOf(ledgerRequest.getAmount()), ledgerRequest.getSignature(), clientConfig.getPublicKeyPath()))
             throw new HDSSException(ErrorMessage.InvalidSignature);
 
-        Block blockToAppend = new Block();
-        blockToAppend.addRequest(message);
-        this.nodeService.startConsensus(blockToAppend);
+        startConsensusIfBlock(blockPool.addRequest(message));
+        blockPool.accept(queue -> {
+            queue.add(message);
+        });
+
         while (!consensusReached);
         System.out.println("[BLOCKCHAIN SERVICE]: Consensus reached");
 
@@ -133,10 +135,15 @@ public class BlockchainService implements UDPService {
     }
 
     public void sendResponse(Message responseOperation, String clientId, int requestId, Message.Type type) {
-        System.out.printf("[BLOCKCHAIN SERVICE]: ENTROU NO SEND RESPONSE %s%n", clientId);
         String serializedResponse = new Gson().toJson(responseOperation);
         LedgerResponse response = new LedgerResponse(Message.Type.REPLY, type, selfConfig.getId(), serializedResponse, requestId);
         clientsLink.send(clientId, response);
+    }
+
+    private void startConsensusIfBlock(Optional<Block> block) {
+        System.out.println("[BLOCKCHAIN SERVICE]: ENTROU NO START CONSENSUS IF BLOCK %s%n");
+        if (block.isEmpty()) return;
+        this.nodeService.startConsensus(block.get());
     }
 
     // this is blocking

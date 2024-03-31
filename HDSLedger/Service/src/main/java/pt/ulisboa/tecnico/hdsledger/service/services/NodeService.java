@@ -292,12 +292,6 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 .build();
 
         if (config.getFailureType() == ProcessConfig.FailureType.FAKE_LEADER) {
-            /*
-             * Because other nodes fail to verify the signature, they will not
-             * reply with ACK meaning that this node will be stuck sending messages
-             * forever
-             */
-
             LOGGER.log(Level.INFO, MessageFormat.format("{0} - Byzantine Fake Leader", config.getId()));
             consensusMessage.setSenderId(this.leaderConfig.getId());
         }
@@ -318,9 +312,6 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         PrepareMessage prepareMessage = message.deserializePrepareMessage();
 
         Block block = Block.fromJson(prepareMessage.getBlock());
-
-        // ignore messages from previous rounds
-        if (message.getRound() < instanceInfo.get(this.consensusInstance.get()).getCurrentRound()) return;
 
         LOGGER.log(Level.INFO,
                 MessageFormat.format(
@@ -488,7 +479,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
             instance = this.instanceInfo.get(consensusInstance);
             instance.setCommittedRound(round);
 
-            LedgerRequest ledgerRequest = commitValue.get().getRequests().get(0);
+            List<LedgerRequest> ledgerRequests = commitValue.get().getRequests();
 
             // Append value to the ledger (must be synchronized to be thread-safe)
             synchronized(ledger) {
@@ -517,14 +508,29 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
             lastDecidedConsensusInstance.getAndIncrement();
 
-            if (ledgerRequest.getType() == Message.Type.TRANSFER)
-                try {
-                    transfer(ledgerRequest.deserializeTransfer());
-                } catch (HDSSException e) {
-                    LOGGER.log(Level.SEVERE, e.getMessage());
-                }
+            for (LedgerRequest ledgerRequest: ledgerRequests) {
+                if (ledgerRequest.getType() == Message.Type.TRANSFER)
+                    try {
+                        transfer(ledgerRequest.deserializeTransfer());
+
+                        blockPool.accept(queue -> {
+                            for (LedgerRequest request : queue) {
+                                if (request.getRequest().equals(ledgerRequest.getRequest())) {
+                                    queue.remove(request);
+                                    return;
+                                }
+                            }
+                        });
+
+                    } catch (HDSSException e) {
+                        LOGGER.log(Level.SEVERE, e.getMessage());
+                    }
+            }
+
 
             //else if (ledgerRequest.getType() == Message.Type.BALANCE) checkBalance(ledgerRequest.deserializeBalance());
+
+
             this.blockchainService.setConsensusReached(true);
 
             LOGGER.log(Level.INFO,

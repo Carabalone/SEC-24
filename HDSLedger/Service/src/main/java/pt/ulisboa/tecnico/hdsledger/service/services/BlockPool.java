@@ -51,7 +51,7 @@ public class BlockPool {
      */
     private Optional<Block> checkTransactionThreshold() {
         synchronized (this.pool) {
-            if (this.pool.size() < this.blockSize) return Optional.empty();
+            if (this.pool.size() <= this.blockSize) return Optional.empty();
 
             var block = new Block();
             for (int i = 0; i < this.blockSize; i++){
