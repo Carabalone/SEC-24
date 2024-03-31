@@ -20,6 +20,7 @@ python3 puppet-master.py 3 1
 This runs the project with the silent_leader server configuration and the greedy_client configuration.
 
 The project includes the following server configurations:
+
     - regular_config.json
     
     - message_delay.json
@@ -40,6 +41,7 @@ The project includes the following server configurations:
 
 
 The project includes the following client configurations:
+
     - regular_config.json
     
     - greedy_config.json
