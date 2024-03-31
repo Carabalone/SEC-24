@@ -14,7 +14,7 @@ public class ProcessConfigBuilder {
     private final ProcessConfig instance = new ProcessConfig();
 
     public ProcessConfig[] fromFile(String path) {
-        System.out.println(path);
+        System.out.printf("Reading configuration from %s\n", path);
         try (BufferedInputStream is = new BufferedInputStream(new FileInputStream(path))) {
             String input = new String(is.readAllBytes(), StandardCharsets.UTF_8);
             Gson gson = new Gson();

@@ -21,12 +21,13 @@ public class Client {
     public static final void main(String[] args) throws HDSSException {
         try {
             String clientId = args[0];
-            String configOption = args[1];
+            String serverConfig = args[1];
+            String clientConfig = args[2];
 
             ProcessConfig[] nodes, clients;
 
-            nodes = new ProcessConfigBuilder().fromFile(nodePath + configOption);
-            clients = new ProcessConfigBuilder().fromFile(clientPath + configOption);
+            nodes = new ProcessConfigBuilder().fromFile(nodePath + serverConfig);
+            clients = new ProcessConfigBuilder().fromFile(clientPath + clientConfig);
             Optional<ProcessConfig> config = Arrays.stream(clients).filter(c -> c.getId().equals(clientId)).findFirst();
 
             if (config.isEmpty()) throw new HDSSException(ErrorMessage.ClientNotFound);
