@@ -21,17 +21,27 @@ This runs the project with the silent_leader server configuration and the greedy
 
 The project includes the following server configurations:
     - regular_config.json
+    
     - message_delay.json
+    
     - message_delay_small_client.json
+    
     - silent_leader.json
+    
     - drop_config.json
+    
     - dictator_leader.json
+    
     - bad_consensus_config.json
+    
     - fake_leader_config.json
+    
     - leader_spoofing.json"
+
 
 The project includes the following client configurations:
     - regular_config.json
+    
     - greedy_config.json
 
 ## Current Architecture Diagram:
