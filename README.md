@@ -7,10 +7,32 @@ guarantees. It uses the Istanbul BFT consensus algorithm to ensure that all node
 in the same order, achieving State Machine Replication (SMR) and guarantees that all nodes
 have the same state.
 
-## How to run message delay test:
+## How to run the project:
 ```bash
-python3 puppet-master.py 3
+python3 puppet-master.py <server_configuration> <client_configuration>
 ```
+
+## Example :
+```bash
+python3 puppet-master.py 3 1
+```
+
+This runs the project with the silent_leader server configuration and the greedy_client configuration.
+
+The project includes the following server configurations:
+    * regular_config.json
+    * message_delay.json
+    * message_delay_small_client.json
+    * silent_leader.json
+    * drop_config.json
+    * dictator_leader.json
+    * bad_consensus_config.json
+    * fake_leader_config.json
+    * leader_spoofing.json"
+
+The project includes the following client configurations:
+    * regular_config.json
+    * greedy_config.json
 
 ## Current Architecture Diagram:
 ![Architecture](HDSLedger/img/architecture.jpg)
