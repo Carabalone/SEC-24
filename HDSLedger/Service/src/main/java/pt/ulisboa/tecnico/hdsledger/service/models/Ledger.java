@@ -27,6 +27,15 @@ public class Ledger {
         ledger.add(block);
     }
 
+    public ConcurrentHashMap<String, Long> getAccountBalances() {
+        ConcurrentHashMap<String, Long> map = new ConcurrentHashMap<>();
+
+        for (var entry : accounts.entrySet()) {
+            map.put(entry.getKey(), entry.getValue().getBalance());
+        }
+        return map;
+    }
+
     public void addAccount(Account account) {
         accounts.putIfAbsent(account.getId(), account);
     }

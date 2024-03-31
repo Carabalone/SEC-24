@@ -382,10 +382,12 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
             sendersMessage.forEach(System.out::println);
 
             try {
+                Signature sig = new Signature(preparedBlock.get(), ledger.getAccountBalances());
+                String signedSignature = DigitalSignature.sign(sig.toJson(), config.getPrivateKeyPath());
                 String signedBlock = DigitalSignature.sign(Block.getBlockJson(preparedBlock.get()), config.getPrivateKeyPath());
-                CommitMessage c = new CommitMessage(Block.getBlockJson(preparedBlock.get()), signedBlock);
+                CommitMessage c = new CommitMessage(Block.getBlockJson(preparedBlock.get()), signedSignature);
                 instance.setCommitMessage(c);
-                ledger.addSignature(consensusInstance, config.getId(), signedBlock);
+                ledger.addSignature(consensusInstance, config.getId(), signedSignature);
 
                 sendersMessage.forEach(senderMessage -> {
                     ConsensusMessage m = new ConsensusMessageBuilder(config.getId(), Message.Type.COMMIT)
