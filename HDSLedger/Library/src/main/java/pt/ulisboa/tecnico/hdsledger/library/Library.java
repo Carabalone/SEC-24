@@ -39,6 +39,7 @@ public class Library {
     private AtomicInteger requestId = new AtomicInteger(0);
 
     private List<String> blockchain = new ArrayList<>();
+    private long lastBalance = -1;
 
 
     public Library(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs, ProcessConfig[] clientConfigs) {
@@ -49,6 +50,7 @@ public class Library {
         this.config = clientConfig;
         this.nodeConfigs = nodeConfigs;
         this.clientConfigs = clientConfigs;
+        lastBalance = this.config.getBalance();
 
         // Create link to communicate with nodes
         System.out.println("[LIBRARY] creating link");
@@ -148,21 +150,35 @@ public class Library {
 
         System.out.printf("[LIBRARY] WAITING FOR MINIMUM SET OF RESPONSES FOR REQUEST: \n", request.getMessageId());
         waitForMinSetOfResponses(ledgerRequest.getRequestId());
+        System.out.println("got out");
 
         // check if any of the responses is valid and return that balance
 
-        Optional<LedgerResponseBalance> response = responses.get(clientRequestId).stream()
-                .map(r -> (LedgerResponse) r)
-                .map(r -> r.deserializeBalance())
-                .filter(r -> verifyBalanceResponse(r))
-                .findAny();
+        AtomicInteger filterCount = new AtomicInteger(0);
+        AtomicInteger beforeFilterCount = new AtomicInteger(0);
+        synchronized (responses) {
+            Optional<LedgerResponseBalance> response = responses.get(clientRequestId).stream()
+                    .map(r -> (LedgerResponse) r)
+                    .map(r -> r.deserializeBalance())
+//                    .peek(r -> System.out.println("Response: " + r.getSenderId()))
+//                    .peek(r -> beforeFilterCount.getAndIncrement())
+                    .filter(r -> verifyBalanceResponse(r))
+//                    .peek(r -> filterCount.getAndIncrement())
+//                    .peek(r -> System.out.println("Valid response: " + r.getSenderId()))
+                    .findAny();
 
-        if (response.isEmpty()) {
-            System.out.println("Could not find a valid response");
-            return;
+            System.out.println("Filter count: " + filterCount.get());
+            System.out.println("BeforeFilter count: " + beforeFilterCount.get());
+
+            if (response.isEmpty()) {
+                System.out.println("Could not find a valid response");
+                return;
+            }
+            lastBalance = response.get().getBalance();
+
+            System.out.printf("[LIBRARY] Balance of clientId %s: is %d\n", clientId, response.get().getBalance());
         }
 
-        System.out.printf("[LIBRARY] Balance of clientId %s: is %d\n", clientId, response.get().getBalance());
     }
 
     public void transfer(int amount, String destinationId) {
@@ -244,6 +260,7 @@ public class Library {
                 e.printStackTrace();
             }
         }
+        System.out.println("REquest size: " + responses.get(requestId).size());
     }
 
     public void handleAppendRequest(LedgerResponse response) {
