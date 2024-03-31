@@ -12,8 +12,6 @@ terminal = "kitty"
 # Blockchain node configuration file name
 server_configs = [
     "regular_config.json",
-    "small_config.json",
-    "tiny_config.json",
     "message_delay.json",
     "message_delay_small_client.json",
     "silent_leader.json",

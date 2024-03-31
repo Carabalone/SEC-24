@@ -106,10 +106,10 @@ public class BlockchainService implements UDPService {
 
             }, () -> { throw new HDSSException(ErrorMessage.CannotFindAccount); });
         }, () -> { throw new HDSSException(ErrorMessage.CannotFindAccount); });
-
     }
 
     public void sendResponse(Message responseOperation, String clientId, int requestId, Message.Type type) {
+        System.out.printf("[BLOCKCHAIN SERVICE]: ENTROU NO SEND RESPONSE %s%n", clientId);
         String serializedResponse = new Gson().toJson(responseOperation);
         LedgerResponse response = new LedgerResponse(Message.Type.REPLY, type, selfConfig.getId(), serializedResponse, requestId);
         clientsLink.send(clientId, response);
@@ -148,6 +148,8 @@ public class BlockchainService implements UDPService {
                     }
                 }
             }).start();
+        } catch (HDSSException e) {
+            e.printStackTrace();
         } catch (Exception e) {
             e.printStackTrace();
         }

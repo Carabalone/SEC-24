@@ -507,8 +507,15 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
             lastDecidedConsensusInstance.getAndIncrement();
 
-            if (ledgerRequest.getType() == Message.Type.TRANSFER) transfer(ledgerRequest.deserializeTransfer());
+            if (ledgerRequest.getType() == Message.Type.TRANSFER)
+                try {
+                    transfer(ledgerRequest.deserializeTransfer());
+                } catch (HDSSException e) {
+                    LOGGER.log(Level.SEVERE, e.getMessage());
+                }
+
             //else if (ledgerRequest.getType() == Message.Type.BALANCE) checkBalance(ledgerRequest.deserializeBalance());
+            this.blockchainService.setConsensusReached(true);
 
             LOGGER.log(Level.INFO,
                     MessageFormat.format(
@@ -549,11 +556,9 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                     }, () -> { throw new HDSSException(ErrorMessage.CannotFindAccount); });
                 }
 
-                this.blockchainService.setConsensusReached(true);
 
             }, () -> { throw new HDSSException(ErrorMessage.CannotFindAccount); });
         }, () -> { throw new HDSSException(ErrorMessage.CannotFindAccount); });
-
     }
 
 /*    public void balanceOperation(LedgerRequestBalance ledgerRequest, LedgerRequest message) {
@@ -1042,6 +1047,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                     e.printStackTrace();
                 }
             }).start();
+        } catch (HDSSException e) {
+            e.printStackTrace();
         } catch (Exception e) {
             e.printStackTrace();
         }

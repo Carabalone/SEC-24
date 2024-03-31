@@ -14,9 +14,8 @@ public class Client {
 
     private static void help() {
         System.out.println("Welcome to the Serenity Ledger");
-        System.out.println("Type 'append <value>' to append a string to the blockchain.");
         System.out.println("Type 'balance <clientId>' to check your balance.");
-        System.out.println("Type 'transfer <ammount> <destinationId>' to transfer value to another client.");
+        System.out.println("Type 'transfer <amount> <destinationId>' to transfer value to another client.");
     }
 
     public static final void main(String[] args) throws HDSSException {
@@ -52,13 +51,6 @@ public class Client {
                 switch (command) {
 
                     case "help" -> help();
-
-                    case "append" -> {
-                        if (terms.length < 2)
-                            System.out.println("bad input, usage: append <string_to_append>");
-                        System.out.println("Sent request to append" + terms[1] + " to the blockchain");
-                        library.append(terms[1]);
-                    }
 
                     case "balance" -> {
                         if (terms.length < 2)

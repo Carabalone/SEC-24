@@ -66,48 +66,6 @@ public class Library {
         responses.add(response);
     }
 
-    public List<String> append(String value) {
-        int clientRequestId = this.requestId.getAndIncrement();
-        String valueSignature, requestSignature;
-
-        try {
-            valueSignature = DigitalSignature.sign(value, this.config.getPrivateKeyPath());
-        } catch (Exception e) {
-            throw new HDSSException(ErrorMessage.UnableToSignMessage);
-        }
-
-        LedgerRequestAppend request = new LedgerRequestAppend(Message.Type.APPEND, this.config.getId(), value, this.blockchain.size(), valueSignature);
-        String serializedRequest = new Gson().toJson(request);
-
-        try {
-            requestSignature = DigitalSignature.sign(serializedRequest, this.config.getPrivateKeyPath());
-        } catch (Exception e) {
-            throw new HDSSException(ErrorMessage.UnableToSignMessage);
-        }
-
-        LedgerRequest ledgerRequest = new LedgerRequest(this.config.getId(), Message.Type.APPEND, clientRequestId, serializedRequest, requestSignature);
-        this.link.broadcast(ledgerRequest);
-
-        System.out.printf("[LIBRARY] WAITING FOR MINIMUM SET OF RESPONSES FOR REQUEST: \n", ledgerRequest.getMessageId());
-        waitForMinSetOfResponses(ledgerRequest.getRequestId());
-
-        LedgerResponse ledgerResponse = (LedgerResponse) responses.get(clientRequestId).get(0);
-        LedgerResponseAppend ledgerResponseAppend = ledgerResponse.deserializeAppend();
-
-        // Add new values to the blockchain
-        List<String> blockchainValues = ledgerResponseAppend.getValues();
-
-        // we send the whole ledger from the node to the client
-        // we could send only the new values, but as of right now I don't know if there would be any
-        // consistency problems with that option, so for now we just replace the whole blockchain
-        blockchain = ledgerResponseAppend.getValues();
-        //blockchain.addAll(ledgerResponse.getValues().stream().toList());
-
-        responses.remove(clientRequestId);
-
-        return blockchainValues;
-    }
-
     public Optional<PublicKey> getPublicKey(String accountId) {
         Optional<ProcessConfig> accountConfig = Arrays.stream(this.clientConfigs).filter(c -> c.getId().equals(accountId)).findFirst();
 
@@ -263,22 +221,6 @@ public class Library {
         System.out.println("REquest size: " + responses.get(requestId).size());
     }
 
-    public void handleAppendRequest(LedgerResponse response) {
-        addResponse(response.getRequestId(), response);
-
-        // there is a delay here. We add the response and wee need to wait until the value is actually added by the append
-        // method that is waiting for the response to be added.
-        // maybe we should refactor this.
-        try {
-            Thread.sleep(150); // just for debug purposes
-        }   catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        //System.out.println("LIBRARY: Added values to the blockhain: " + response.getValues().get(response.getValues().size() - 1));
-        System.out.printf("LIBRARY: Blockchain: %s\n", blockchain);
-    }
-
-    // Esses 2 handles tao no fds aqui, no futuro pode fazer sentido separar mas 99% de certeza que nao
     public void handleBalanceRequest(LedgerResponse response) {
         addResponse(response.getRequestId(), response);
     }
@@ -309,7 +251,6 @@ public class Library {
 
                                 LedgerResponse response = (LedgerResponse) message;
 
-                                if (response.getTypeOfSerializedMessage() == Message.Type.APPEND) handleAppendRequest(response);
                                 if (response.getTypeOfSerializedMessage() == Message.Type.BALANCE) handleBalanceRequest(response);
                                 if (response.getTypeOfSerializedMessage() == Message.Type.TRANSFER) handleTransferRequest(response);
                             }
@@ -322,12 +263,12 @@ public class Library {
                             }
                         }
                     }
-                }
-
-                catch (IOException | ClassNotFoundException e) {
+                } catch (IOException | ClassNotFoundException e) {
                     e.printStackTrace();
                 }
             }).start();
+        } catch (HDSSException e) {
+            e.printStackTrace();
         } catch (Exception e) {
             e.printStackTrace();
         }
