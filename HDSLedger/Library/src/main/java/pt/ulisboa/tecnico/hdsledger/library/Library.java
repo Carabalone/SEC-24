@@ -4,7 +4,6 @@ import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
-import javax.swing.text.html.Option;
 import java.io.IOException;
 import java.security.PublicKey;
 import java.text.MessageFormat;
@@ -13,7 +12,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class Library {
@@ -39,6 +37,7 @@ public class Library {
     private AtomicInteger requestId = new AtomicInteger(0);
 
     private List<String> blockchain = new ArrayList<>();
+
     private long lastBalance = -1;
 
 
@@ -109,12 +108,10 @@ public class Library {
         return blockchainValues;
     }
 
-    // Mandar email pro Sidnei pq o enunciado n faz sentido querer a public key do destino
     public Optional<PublicKey> getPublicKey(String accountId) {
         Optional<ProcessConfig> accountConfig = Arrays.stream(this.clientConfigs).filter(c -> c.getId().equals(accountId)).findFirst();
 
-        if (accountConfig.isEmpty())
-            return Optional.empty();
+        if (accountConfig.isEmpty()) return Optional.empty();
 
         PublicKey accountPubKey;
         try {
@@ -126,10 +123,10 @@ public class Library {
         return Optional.of(accountPubKey);
     }
 
-    // Pensar melhor no caso bizantino
     public void checkBalance(String clientId) {
         int clientRequestId = this.requestId.getAndIncrement();
         Optional<PublicKey> clientPublicKey = getPublicKey(clientId);
+
         if (clientPublicKey.isEmpty()) {
             System.out.println("Receiver public key does not exist, not continuing operation");
             return;
@@ -174,6 +171,7 @@ public class Library {
                 System.out.println("Could not find a valid response");
                 return;
             }
+
             lastBalance = response.get().getBalance();
 
             System.out.printf("[LIBRARY] Balance of clientId %s: is %d\n", clientId, response.get().getBalance());
@@ -210,8 +208,10 @@ public class Library {
         LedgerResponseTransfer ledgerResponseTransfer = ledgerResponse.deserializeTransfer();
         long sourceBalance = ledgerResponseTransfer.getSourceBalance();
         long destinationBalance = ledgerResponseTransfer.getDestinationBalance();
+        long payedFee = ledgerResponseTransfer.getPayedFee();
 
         System.out.println("[LIBRARY] Transferred " + amount + " to " + destinationId);
+        System.out.println("[LIBRARY] Payed fee to block producer: " + payedFee);
         System.out.printf("[LIBRARY] My balance: %d\n", sourceBalance);
         System.out.printf("[LIBRARY] Destination Balance: %d\n", destinationBalance);
     }

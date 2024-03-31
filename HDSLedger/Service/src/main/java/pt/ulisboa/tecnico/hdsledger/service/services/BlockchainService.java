@@ -42,50 +42,9 @@ public class BlockchainService implements UDPService {
         this.consensusReached = false;
     }
 
-    public boolean isConsensusReached() {
-        return consensusReached;
-    }
-
     public synchronized void setConsensusReached(boolean consensusReached) {
         this.consensusReached = consensusReached;
     }
-
-    private void sendTransferResponse(LedgerRequestTransfer ledgerRequest, int requestId) {
-        Optional<Account> sourceAccountOpt = nodeService.getLedger().getAccount(ledgerRequest.getSenderId());
-        Optional<Account> destinationAccountOpt = nodeService.getLedger().getAccount(ledgerRequest.getDestinationId());
-
-        sourceAccountOpt.ifPresentOrElse(sourceAccount -> {
-            destinationAccountOpt.ifPresentOrElse(destinationAccount -> {
-
-                LedgerResponseTransfer ledgerResponse = new LedgerResponseTransfer(this.selfConfig.getId(), sourceAccount.getBalance(), destinationAccount.getBalance());
-                sendResponse(ledgerResponse, ledgerRequest.getSenderId(), requestId, Message.Type.TRANSFER);
-                this.setConsensusReached(false);
-
-            }, () -> { throw new HDSSException(ErrorMessage.CannotFindAccount); });
-        }, () -> { throw new HDSSException(ErrorMessage.CannotFindAccount); });
-
-    }
-
-/*    public void append(LedgerRequest message) {
-        ProcessConfig clientConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(message.getSenderId())).findFirst().get();
-        LedgerRequestAppend ledgerRequest = message.deserializeAppend();
-
-        if (!DigitalSignature.verifySignature(message.getRequest(), message.getClientSignature(), clientConfig.getPublicKeyPath()))
-            throw new HDSSException(ErrorMessage.InvalidSignature);
-
-        if (!DigitalSignature.verifySignature(ledgerRequest.getValue(), ledgerRequest.getSignature(), clientConfig.getPublicKeyPath()))
-            throw new HDSSException(ErrorMessage.InvalidSignature);
-
-        Block blockToAppend = new Block();
-        blockToAppend.addRequest(message);
-        this.nodeService.startConsensus(blockToAppend);
-        while (!consensusReached);
-        System.out.println("[BLOCKCHAIN SERVICE]: Consensus reached");
-
-        LedgerResponseAppend ledgerResponse = getLedgerResponse();
-        sendResponse(ledgerResponse, message.getSenderId(), message.getRequestId(), Message.Type.APPEND);
-        this.setConsensusReached(false);
-    }*/
 
     public void checkBalance(LedgerRequest message) {
         ProcessConfig clientConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(message.getSenderId())).findFirst().get();
@@ -133,6 +92,23 @@ public class BlockchainService implements UDPService {
         sendTransferResponse(ledgerRequest, message.getRequestId());
     }
 
+    private void sendTransferResponse(LedgerRequestTransfer ledgerRequest, int requestId) {
+        Optional<Account> sourceAccountOpt = nodeService.getLedger().getAccount(ledgerRequest.getSenderId());
+        Optional<Account> destinationAccountOpt = nodeService.getLedger().getAccount(ledgerRequest.getDestinationId());
+
+        sourceAccountOpt.ifPresentOrElse(sourceAccount -> {
+            destinationAccountOpt.ifPresentOrElse(destinationAccount -> {
+
+                LedgerResponseTransfer ledgerResponse = new LedgerResponseTransfer(
+                        this.selfConfig.getId(), sourceAccount.getBalance(), destinationAccount.getBalance(), nodeService.getFeeToBlockProducer());
+                sendResponse(ledgerResponse, ledgerRequest.getSenderId(), requestId, Message.Type.TRANSFER);
+                this.setConsensusReached(false);
+
+            }, () -> { throw new HDSSException(ErrorMessage.CannotFindAccount); });
+        }, () -> { throw new HDSSException(ErrorMessage.CannotFindAccount); });
+
+    }
+
     public void sendResponse(Message responseOperation, String clientId, int requestId, Message.Type type) {
         String serializedResponse = new Gson().toJson(responseOperation);
         LedgerResponse response = new LedgerResponse(Message.Type.REPLY, type, selfConfig.getId(), serializedResponse, requestId);
@@ -152,12 +128,6 @@ public class BlockchainService implements UDPService {
 
                         new Thread(() -> {
                             switch (message.getType())  {
-
-                                case APPEND -> {
-                                    LOGGER.log(Level.INFO, MessageFormat.format("{0} - BLOCKCHAIN SERVICE: Received append request from {1}",
-                                            selfConfig.getId(), message.getSenderId()));
-                                    //append((LedgerRequest) message);
-                                }
 
                                 case BALANCE -> {
                                     LOGGER.log(Level.INFO, MessageFormat.format("{0} - BLOCKCHAIN SERVICE: Received balance request from {1}",

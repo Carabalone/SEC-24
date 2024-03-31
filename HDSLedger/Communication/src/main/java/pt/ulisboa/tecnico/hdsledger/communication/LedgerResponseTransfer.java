@@ -6,11 +6,13 @@ public class LedgerResponseTransfer extends Message {
 
     private long destinationBalance;
 
+    private long payedFee;
 
-    public LedgerResponseTransfer(String senderId, long sourceBalance, long destinationBalance) {
+    public LedgerResponseTransfer(String senderId, long sourceBalance, long destinationBalance, long payedFee) {
         super(senderId, Type.REPLY);
         this.sourceBalance = sourceBalance;
         this.destinationBalance = destinationBalance;
+        this.payedFee = payedFee;
     }
 
     public long getSourceBalance() { return sourceBalance; }
@@ -20,4 +22,8 @@ public class LedgerResponseTransfer extends Message {
     public long getDestinationBalance() { return destinationBalance; }
 
     public void setDestinationBalance(long destinationBalance) { this.destinationBalance = destinationBalance; }
+
+    public long getPayedFee() { return payedFee; }
+
+    public void setPayedFee(long payedFee) { this.payedFee = payedFee; }
 }
