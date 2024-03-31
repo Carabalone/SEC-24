@@ -65,14 +65,31 @@ public class BlockchainService implements UDPService {
                                 balance, nodeService.getLastDecidedConsensusInstance(),
                                 nodeService.getLedger().getSignatures(nodeService.getLastDecidedConsensusInstance()));
 
-        System.out.println("SIgnatures: " + nodeService.getLedger().getSignatures(nodeService.getLastDecidedConsensusInstance()));
+        System.out.println("Signatures: " + nodeService.getLedger().getSignatures(nodeService.getLastDecidedConsensusInstance()));
 
         sendResponse(ledgerResponse, message.getSenderId(), message.getRequestId(), Message.Type.BALANCE);
     }
 
     public void strongBalanceRead(LedgerRequestBalance ledgerRequest, LedgerRequest message) {
+        if (ledgerRequest.getConsistency() != LedgerRequestBalance.Consistency.STRONG) {
+            System.out.println("Strong read got weak read request, redirecting...");
+            weakBalanceRead(ledgerRequest, message);
+            return;
+        }
+
         ProcessConfig clientToCheckConfig = Arrays.stream(this.clientsConfig).filter(config -> config.getId().equals(ledgerRequest.getClientId())).findFirst().get();
 
+        Block blockToAppend = new Block();
+        blockToAppend.addRequest(message);
+        nodeService.startConsensus(blockToAppend);
+        while (!consensusReached);
+        System.out.println("[BLOCKCHAIN SERVICE]: Consensus reached");
+
+        // block another instance of consensus while not responding balance
+
+        weakBalanceRead(ledgerRequest, message);
+
+        // liberate nodes to have consensus again
     }
 
     public void transfer(LedgerRequest message) {
@@ -102,7 +119,9 @@ public class BlockchainService implements UDPService {
             destinationAccountOpt.ifPresentOrElse(destinationAccount -> {
 
                 LedgerResponseTransfer ledgerResponse = new LedgerResponseTransfer(
-                        this.selfConfig.getId(), sourceAccount.getBalance(), destinationAccount.getBalance(), nodeService.getFeeToBlockProducer());
+                        this.selfConfig.getId(), sourceAccount.getBalance(), destinationAccount.getBalance(),
+                        nodeService.getFeeToBlockProducer()
+                );
                 sendResponse(ledgerResponse, ledgerRequest.getSenderId(), requestId, Message.Type.TRANSFER);
                 this.setConsensusReached(false);
 

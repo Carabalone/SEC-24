@@ -85,7 +85,7 @@ public class Library {
         return Optional.of(accountPubKey);
     }
 
-    public void checkBalance(String clientId) {
+    public void checkBalance(String clientId, LedgerRequestBalance.Consistency consistency) {
         if (findConfig(clientId).isEmpty()) {
             System.out.println("Client does not exist, not continuing operation");
             return;
@@ -100,7 +100,9 @@ public class Library {
 
         int clientRequestId = this.requestId.getAndIncrement();
 
-        LedgerRequestBalance request = new LedgerRequestBalance(Message.Type.BALANCE, this.config.getId(), clientId, clientPublicKey.get());
+        LedgerRequestBalance request = new LedgerRequestBalance(Message.Type.BALANCE, this.config.getId(), clientId,
+                clientPublicKey.get(), consistency
+        );
         String serializedRequest = new Gson().toJson(request);
         String signature;
 
@@ -113,7 +115,7 @@ public class Library {
         LedgerRequest ledgerRequest = new LedgerRequest(this.config.getId(), Message.Type.BALANCE, clientRequestId, serializedRequest, signature);
         this.link.broadcast(ledgerRequest);
 
-        System.out.printf("[LIBRARY] WAITING FOR MINIMUM SET OF RESPONSES FOR REQUEST: \n", request.getMessageId());
+        System.out.printf("[LIBRARY] WAITING FOR MINIMUM SET OF RESPONSES FOR REQUEST: " + request.getMessageId() + "\n");
         waitForMinSetOfResponses(ledgerRequest.getRequestId());
         System.out.println("got out");
 

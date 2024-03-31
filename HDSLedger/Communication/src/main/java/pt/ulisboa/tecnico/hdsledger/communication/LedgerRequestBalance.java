@@ -7,15 +7,24 @@ import java.security.PublicKey;
 
 public class LedgerRequestBalance extends Message {
 
+    public enum Consistency {
+        WEAK, STRONG;
+    }
     private String clientKey;
 
     private String clientId;
+    private final Consistency consistency;
 
 
-    public LedgerRequestBalance(Type type, String senderId, String clientId, PublicKey clientKey) {
+    public LedgerRequestBalance(Type type, String senderId, String clientId, PublicKey clientKey, Consistency consistency) {
         super(senderId, type);
         this.clientId = clientId;
         this.clientKey = DigitalSignature.encodePublicKey(clientKey);
+        this.consistency = consistency;
+    }
+
+    public Consistency getConsistency() {
+        return this.consistency;
     }
 
     public PublicKey getClientKey() {

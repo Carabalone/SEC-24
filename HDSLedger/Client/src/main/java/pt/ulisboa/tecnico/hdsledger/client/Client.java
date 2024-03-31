@@ -1,5 +1,6 @@
 package pt.ulisboa.tecnico.hdsledger.client;
 
+import pt.ulisboa.tecnico.hdsledger.communication.LedgerRequestBalance;
 import pt.ulisboa.tecnico.hdsledger.library.Library;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
@@ -55,8 +56,17 @@ public class Client {
                     case "balance" -> {
                         if (terms.length < 2)
                             System.out.println("bad input, usage: balance <clientId>");
-                        System.out.println("Sent request to check balance");
-                        library.checkBalance(terms[1]);
+
+                        if (terms.length < 3) {
+                            System.out.println("Weak balance read:");
+                            library.checkBalance(terms[1], LedgerRequestBalance.Consistency.WEAK);
+                            break;
+                        }
+                        if (terms.length >= 3 && terms[1].equals("strong")) {
+                            System.out.println("Strong balance read:");
+                            library.checkBalance(terms[2], LedgerRequestBalance.Consistency.STRONG);
+                            break;
+                        }
                     }
 
                     case "transfer" -> {
