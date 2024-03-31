@@ -117,7 +117,6 @@ public class Library {
 
         System.out.printf("[LIBRARY] WAITING FOR MINIMUM SET OF RESPONSES FOR REQUEST: " + request.getMessageId() + "\n");
         waitForMinSetOfResponses(ledgerRequest.getRequestId());
-        System.out.println("got out");
 
         // check if any of the responses is valid and return that balance
 
@@ -156,9 +155,14 @@ public class Library {
             return;
         }
 
-        if (destinationId.equals(config.getId())) {
+
+        if (destinationId.equals(this.config.getId()) && this.config.getFailureType() != ProcessConfig.FailureType.GREEDY_CLIENT) {
             System.out.println("Cannot transfer to self");
             return;
+        }
+        else if (this.config.getFailureType() == ProcessConfig.FailureType.GREEDY_CLIENT) {
+            destinationId.equals(this.config.getId());
+            System.out.printf("[LIBRARY] Greedy client, transferring to self\n");
         }
 
         try {
@@ -179,7 +183,7 @@ public class Library {
         LedgerRequest ledgerRequest = new LedgerRequest(this.config.getId(), Message.Type.TRANSFER, clientRequestId, serializedRequest, requestSignature);
         this.link.broadcast(ledgerRequest);
 
-        System.out.printf("[LIBRARY] WAITING FOR MINIMUM SET OF RESPONSES FOR REQUEST: \n", request.getMessageId());
+        System.out.printf("[LIBRARY] WAITING UNTIL BLOCK IS DECIDED: \n", request.getMessageId());
         waitForMinSetOfResponses(ledgerRequest.getRequestId());
 
         LedgerResponse ledgerResponse = (LedgerResponse) responses.get(clientRequestId).get(0);
@@ -255,7 +259,6 @@ public class Library {
                 e.printStackTrace();
             }
         }
-        System.out.println("REquest size: " + responses.get(requestId).size());
     }
 
     public void handleBalanceRequest(LedgerResponse response) {

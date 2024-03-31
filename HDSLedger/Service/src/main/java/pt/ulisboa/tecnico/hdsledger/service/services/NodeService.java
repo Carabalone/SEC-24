@@ -280,11 +280,6 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 new PrepareMessage(prePrepareMessage.getBlock());
 
 
-        LOGGER.log(Level.INFO,
-                MessageFormat.format(
-                        "Sending prepare message with VALUE: {0} ",
-                        prepareMessage.getBlock()));
-
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PREPARE)
                 .setConsensusInstance(consensusInstance)
                 .setRound(round)
@@ -294,12 +289,6 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 .build();
 
         if (config.getFailureType() == ProcessConfig.FailureType.FAKE_LEADER) {
-            /*
-             * Because other nodes fail to verify the signature, they will not
-             * reply with ACK meaning that this node will be stuck sending messages
-             * forever
-             */
-
             LOGGER.log(Level.INFO, MessageFormat.format("{0} - Byzantine Fake Leader", config.getId()));
             consensusMessage.setSenderId(this.leaderConfig.getId());
         }
@@ -320,9 +309,6 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         PrepareMessage prepareMessage = message.deserializePrepareMessage();
 
         Block block = Block.fromJson(prepareMessage.getBlock());
-
-        // ignore messages from previous rounds
-        if (message.getRound() < instanceInfo.get(this.consensusInstance.get()).getCurrentRound()) return;
 
         LOGGER.log(Level.INFO,
                 MessageFormat.format(
@@ -400,7 +386,6 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 CommitMessage c = new CommitMessage(Block.getBlockJson(preparedBlock.get()), signedBlock);
                 instance.setCommitMessage(c);
                 ledger.addSignature(consensusInstance, config.getId(), signedBlock);
-                System.out.println("Digest of block: " + DigitalSignature.digest(Block.getBlockJson(preparedBlock.get())));
 
                 sendersMessage.forEach(senderMessage -> {
                     ConsensusMessage m = new ConsensusMessageBuilder(config.getId(), Message.Type.COMMIT)
@@ -490,7 +475,6 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
             instance = this.instanceInfo.get(consensusInstance);
             instance.setCommittedRound(round);
 
-            LedgerRequest ledgerRequest = commitValue.get().getRequests().get(0);
 
             // Append value to the ledger (must be synchronized to be thread-safe)
             synchronized(ledger) {
@@ -506,7 +490,6 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                                     m.getConsensusInstance(), m.getSenderId(),
                                     m.deserializeCommitMessage().getSignature()
                             );
-                            System.out.println("Adding signature " + m.deserializeCommitMessage().getSignature() + "from " + m.getSenderId() + " to ledger");
                         });
 
                 ledger.addBlockAt(consensusInstance - 1, commitValue.get());
@@ -519,14 +502,34 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
             lastDecidedConsensusInstance.getAndIncrement();
 
-            if (ledgerRequest.getType() == Message.Type.TRANSFER)
-                try {
-                    transfer(ledgerRequest.deserializeTransfer());
-                } catch (HDSSException e) {
-                    LOGGER.log(Level.SEVERE, e.getMessage());
+            List<LedgerRequest> ledgerRequests = commitValue.get().getRequests();
+
+            for (LedgerRequest ledgerRequest: ledgerRequests) {
+                if (ledgerRequest.getType() == Message.Type.TRANSFER)
+                    try {
+                        transfer(ledgerRequest.deserializeTransfer());
+                    } catch (HDSSException e) {
+                        LOGGER.log(Level.SEVERE, e.getMessage());
+                    }
+            }
+
+            for (LedgerRequest ledgerRequest: ledgerRequests) {
+                synchronized (blockPool) {
+                    blockPool.accept(queue -> {
+                        for (LedgerRequest request : queue) {
+                            if (request.getRequest().equals(ledgerRequest.getRequest())) {
+                                queue.remove(request);
+                                return;
+                            }
+                        }
+                    });
                 }
+            }
+
 
             //else if (ledgerRequest.getType() == Message.Type.BALANCE) checkBalance(ledgerRequest.deserializeBalance());
+
+
             this.blockchainService.setConsensusReached(true);
 
             LOGGER.log(Level.INFO,
@@ -537,6 +540,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
     }
 
     public void transfer(LedgerRequestTransfer ledgerRequest) {
+        System.out.printf("SENDER ID: %s\n", ledgerRequest.getSenderId());
+
         Optional<Account> sourceAccountOpt = ledger.getAccount(ledgerRequest.getSenderId());
         Optional<Account> destinationAccountOpt = ledger.getAccount(ledgerRequest.getDestinationId());
 
@@ -566,6 +571,9 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                             MessageFormat.format(
                                 "{0} - Transfer from client {1} to client {2} of amount {3} with fee {4} successful, new leader balance: {5}",
                                 config.getId(), sourceAccount.getId(), destinationAccount.getId(), amount, feeToBlockProducer, leaderAccount.getBalance()));
+
+                        System.out.printf("Source client balance: %d\n", sourceAccount.getBalance());
+                        System.out.printf("Destination client balance: %d\n", destinationAccount.getBalance());
 
                     }, () -> { throw new HDSSException(ErrorMessage.CannotFindAccount); });
                 }

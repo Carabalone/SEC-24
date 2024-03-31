@@ -28,7 +28,7 @@ public class Node {
             String id = args[0];
             nodesConfigPath += args[1];
             clientsConfigPath += args[2];
-            int block_size = Integer.parseInt(args[3]);
+            int blockSize = Integer.parseInt(args[3]);
 
             // Create configuration instances
             ProcessConfig[] nodeConfigs = new ProcessConfigBuilder().fromFile(nodesConfigPath);
@@ -53,7 +53,7 @@ public class Node {
             Link linkToClients = new Link(nodeConfig, nodeConfig.getClientPort(), clientConfigs,
                     LedgerRequest.class);
 
-            BlockPool blockPool = new BlockPool(block_size);
+            BlockPool blockPool = new BlockPool(blockSize);
 
             // Services that implement listen from UDPService
             NodeService nodeService = new NodeService(linkToNodes, linkToClients,
