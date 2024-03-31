@@ -6,6 +6,7 @@ import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
 import java.io.IOException;
 import java.security.PublicKey;
+import java.sql.SQLOutput;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,7 +39,7 @@ public class Library {
 
     private List<String> blockchain = new ArrayList<>();
 
-    private long lastBalance = -1;
+    private Map<String, Long> balanceCache = new ConcurrentHashMap<String, Long>();
 
 
     public Library(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs, ProcessConfig[] clientConfigs) {
@@ -49,7 +50,8 @@ public class Library {
         this.config = clientConfig;
         this.nodeConfigs = nodeConfigs;
         this.clientConfigs = clientConfigs;
-        lastBalance = this.config.getBalance();
+        Arrays.stream(clientConfigs).forEach(c -> balanceCache.put(c.getId(), (long) c.getBalance()));
+        Arrays.stream(nodeConfigs).forEach(c -> balanceCache.put(c.getId(), (long) c.getBalance()));
 
         // Create link to communicate with nodes
         System.out.println("[LIBRARY] creating link");
@@ -69,7 +71,7 @@ public class Library {
     }
 
     public Optional<PublicKey> getPublicKey(String accountId) {
-        Optional<ProcessConfig> accountConfig = Arrays.stream(this.clientConfigs).filter(c -> c.getId().equals(accountId)).findFirst();
+        Optional<ProcessConfig> accountConfig = findConfig(accountId);
 
         if (accountConfig.isEmpty()) return Optional.empty();
 
@@ -84,13 +86,19 @@ public class Library {
     }
 
     public void checkBalance(String clientId) {
-        int clientRequestId = this.requestId.getAndIncrement();
+        if (findConfig(clientId).isEmpty()) {
+            System.out.println("Client does not exist, not continuing operation");
+            return;
+        }
+
         Optional<PublicKey> clientPublicKey = getPublicKey(clientId);
 
         if (clientPublicKey.isEmpty()) {
             System.out.println("Receiver public key does not exist, not continuing operation");
             return;
         }
+
+        int clientRequestId = this.requestId.getAndIncrement();
 
         LedgerRequestBalance request = new LedgerRequestBalance(Message.Type.BALANCE, this.config.getId(), clientId, clientPublicKey.get());
         String serializedRequest = new Gson().toJson(request);
@@ -111,40 +119,28 @@ public class Library {
 
         // check if any of the responses is valid and return that balance
 
-        AtomicInteger filterCount = new AtomicInteger(0);
-        AtomicInteger afterBalanceFilter = new AtomicInteger(0);
-        AtomicInteger beforeBalanceFilter = new AtomicInteger(0);
         synchronized (responses) {
 
             int amountOfResponses = responses.get(clientRequestId).size();
 
-            System.out.println("there are " + amountOfResponses + " responses in hte bucket");
-
             Optional<LedgerResponseBalance> response = responses.get(clientRequestId).stream()
                     .map(r -> (LedgerResponse) r)
-                    .peek(r -> System.out.printf(r.getTypeOfSerializedMessage() + "\n"))
-                    .peek(r -> beforeBalanceFilter.getAndIncrement())
                     .filter(r -> r.getTypeOfSerializedMessage() == Message.Type.BALANCE)
                     .map(r -> r.deserializeBalance())
-//                    .peek(r -> System.out.println("Response: " + r.getSenderId()))
-                    .peek(r -> afterBalanceFilter.getAndIncrement())
                     .filter(r -> verifyBalanceResponse(r))
-                    .peek(r -> filterCount.getAndIncrement())
-//                    .peek(r -> System.out.println("Valid response: " + r.getSenderId()))
                     .findAny();
 
-            System.out.println("BeforeBalanceFilter count: " + beforeBalanceFilter.get());
-            System.out.println("AfterBalanceFilter count: " + afterBalanceFilter.get());
-            System.out.println("Filter count: " + filterCount.get());
+            long balance;
 
-            if (response.isEmpty()) {
-                System.out.println("Could not find a valid response");
-                return;
+            if (response.isPresent()) {
+                balance = response.get().getBalance();
+                balanceCache.put(clientId, balance);
+            } else {
+                balance = balanceCache.get(clientId);
+                System.out.println("Not enough signatures, returning cached value");
             }
 
-            lastBalance = response.get().getBalance();
-
-            System.out.printf("[LIBRARY] Balance of clientId %s: is %d\n", clientId, response.get().getBalance());
+            System.out.printf("[LIBRARY] Balance of clientId %s: is %d\n", clientId, balance);
         }
 
     }
@@ -152,6 +148,16 @@ public class Library {
     public void transfer(int amount, String destinationId) {
         int clientRequestId = this.requestId.getAndIncrement();
         String requestSignature, amountSignature;
+
+        if (findConfig(destinationId).isEmpty()) {
+            System.out.println("Destination does not exist, not continuing operation");
+            return;
+        }
+
+        if (destinationId.equals(config.getId())) {
+            System.out.println("Cannot transfer to self");
+            return;
+        }
 
         try {
             amountSignature = DigitalSignature.sign(String.valueOf(amount), this.config.getPrivateKeyPath());
@@ -186,6 +192,12 @@ public class Library {
         System.out.printf("[LIBRARY] Destination Balance: %d\n", destinationBalance);
     }
 
+    Optional<ProcessConfig> findConfig(String id) {
+        Optional<ProcessConfig> node = Arrays.stream(nodeConfigs).filter(config -> config.getId().equals(id)).findFirst();
+        Optional<ProcessConfig> client = Arrays.stream(clientConfigs).filter(config -> config.getId().equals(id)).findFirst();
+
+        return node.isPresent() ? node : client;
+    }
     Optional<ProcessConfig> findNodeConfig(String nodeId) {
         return Arrays.stream(nodeConfigs).filter(config -> config.getId().equals(nodeId)).findFirst();
     }
@@ -200,10 +212,17 @@ public class Library {
         }
 
         try {
-            Map<byte[], Long> frequencyMap = signatures.entrySet().stream().map(entry -> {
+            Map<String, Long> frequencyMap = signatures.entrySet().stream().map(entry -> {
                 try {
-                    return DigitalSignature.decrypt(entry.getValue().getBytes(), findNodeConfig(entry.getKey()).get().getPublicKeyPath());
-                } catch (Exception e){
+                    String digest = Base64.getEncoder().encodeToString(
+                            DigitalSignature.decrypt(
+                                    Base64.getDecoder().decode(entry.getValue()),
+                                    findNodeConfig(entry.getKey()).get().getPublicKeyPath()
+                            )
+                    );
+                    System.out.println("Digest for node " + findNodeConfig(entry.getKey()).get() + " : " + digest);
+                    return digest;
+                } catch (Exception e) {
                     e.printStackTrace();
                     throw new HDSSException(ErrorMessage.FailedToReadPublicKey);
                 }

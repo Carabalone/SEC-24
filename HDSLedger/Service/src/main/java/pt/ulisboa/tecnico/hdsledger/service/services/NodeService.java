@@ -393,6 +393,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 CommitMessage c = new CommitMessage(Block.getBlockJson(preparedBlock.get()), signedBlock);
                 instance.setCommitMessage(c);
                 ledger.addSignature(consensusInstance, config.getId(), signedBlock);
+                System.out.println("Digest of block: " + DigitalSignature.digest(Block.getBlockJson(preparedBlock.get())));
 
                 sendersMessage.forEach(senderMessage -> {
                     ConsensusMessage m = new ConsensusMessageBuilder(config.getId(), Message.Type.COMMIT)

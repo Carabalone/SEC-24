@@ -1,5 +1,7 @@
 package pt.ulisboa.tecnico.hdsledger.service.models;
 
+import pt.ulisboa.tecnico.hdsledger.utilities.DigitalSignature;
+
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Optional;
@@ -59,5 +61,6 @@ public class Ledger {
     public void addSignature(int consensusInstance, String id, String signedBlock) {
         signatures.putIfAbsent(consensusInstance, new ConcurrentHashMap<>());
         signatures.get(consensusInstance).put(id, signedBlock);
+        System.out.println("Added signature for " + id + " in consensus instance " + consensusInstance);
     }
 }
