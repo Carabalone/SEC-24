@@ -14,7 +14,8 @@ public class ProcessConfig {
         DICTATOR_LEADER("DICTATOR_LEADER"),
         BAD_CONSENSUS("BAD_CONSENSUS"),
         FAKE_LEADER("FAKE_LEADER"),
-        LEADER_SPOOFING("LEADER_SPOOFING");
+        LEADER_SPOOFING("LEADER_SPOOFING"),
+        GREEDY_CLIENT("GREEDY_CLIENT");
 
         String type;
         FailureType(String type) {

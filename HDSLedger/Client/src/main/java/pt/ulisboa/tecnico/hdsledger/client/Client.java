@@ -1,5 +1,6 @@
 package pt.ulisboa.tecnico.hdsledger.client;
 
+import pt.ulisboa.tecnico.hdsledger.communication.LedgerRequestBalance;
 import pt.ulisboa.tecnico.hdsledger.library.Library;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
@@ -14,20 +15,20 @@ public class Client {
 
     private static void help() {
         System.out.println("Welcome to the Serenity Ledger");
-        System.out.println("Type 'append <value>' to append a string to the blockchain.");
         System.out.println("Type 'balance <clientId>' to check your balance.");
-        System.out.println("Type 'transfer <ammount> <destinationId>' to transfer value to another client.");
+        System.out.println("Type 'transfer <amount> <destinationId>' to transfer value to another client.");
     }
 
     public static final void main(String[] args) throws HDSSException {
         try {
             String clientId = args[0];
-            String configOption = args[1];
+            String serverConfig = args[1];
+            String clientConfig = args[2];
 
             ProcessConfig[] nodes, clients;
 
-            nodes = new ProcessConfigBuilder().fromFile(nodePath + configOption);
-            clients = new ProcessConfigBuilder().fromFile(clientPath + configOption);
+            nodes = new ProcessConfigBuilder().fromFile(nodePath + serverConfig);
+            clients = new ProcessConfigBuilder().fromFile(clientPath + clientConfig);
             Optional<ProcessConfig> config = Arrays.stream(clients).filter(c -> c.getId().equals(clientId)).findFirst();
 
             if (config.isEmpty()) throw new HDSSException(ErrorMessage.ClientNotFound);
@@ -53,18 +54,20 @@ public class Client {
 
                     case "help" -> help();
 
-                    case "append" -> {
-                        if (terms.length < 2)
-                            System.out.println("bad input, usage: append <string_to_append>");
-                        System.out.println("Sent request to append" + terms[1] + " to the blockchain");
-                        library.append(terms[1]);
-                    }
-
                     case "balance" -> {
                         if (terms.length < 2)
                             System.out.println("bad input, usage: balance <clientId>");
-                        System.out.println("Sent request to check balance");
-                        library.checkBalance(terms[1]);
+
+                        if (terms.length < 3) {
+                            System.out.println("Weak balance read:");
+                            library.checkBalance(terms[1], LedgerRequestBalance.Consistency.WEAK);
+                            break;
+                        }
+                        if (terms.length >= 3 && terms[1].equals("strong")) {
+                            System.out.println("Strong balance read:");
+                            library.checkBalance(terms[2], LedgerRequestBalance.Consistency.STRONG);
+                            break;
+                        }
                     }
 
                     case "transfer" -> {

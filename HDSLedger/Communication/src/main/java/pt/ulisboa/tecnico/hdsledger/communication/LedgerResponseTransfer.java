@@ -2,22 +2,28 @@ package pt.ulisboa.tecnico.hdsledger.communication;
 
 public class LedgerResponseTransfer extends Message {
 
-    private int sourceBalance;
+    private long sourceBalance;
 
-    private int destinationBalance;
+    private long destinationBalance;
 
+    private long payedFee;
 
-    public LedgerResponseTransfer(String senderId, int sourceBalance, int destinationBalance) {
+    public LedgerResponseTransfer(String senderId, long sourceBalance, long destinationBalance, long payedFee) {
         super(senderId, Type.REPLY);
         this.sourceBalance = sourceBalance;
         this.destinationBalance = destinationBalance;
+        this.payedFee = payedFee;
     }
 
-    public int getSourceBalance() { return sourceBalance; }
+    public long getSourceBalance() { return sourceBalance; }
 
-    public void setSourceBalance(int sourceBalance) { this.sourceBalance = sourceBalance; }
+    public void setSourceBalance(long sourceBalance) { this.sourceBalance = sourceBalance; }
 
-    public int getDestinationBalance() { return destinationBalance; }
+    public long getDestinationBalance() { return destinationBalance; }
 
-    public void setDestinationBalance(int destinationBalance) { this.destinationBalance = destinationBalance; }
+    public void setDestinationBalance(long destinationBalance) { this.destinationBalance = destinationBalance; }
+
+    public long getPayedFee() { return payedFee; }
+
+    public void setPayedFee(long payedFee) { this.payedFee = payedFee; }
 }

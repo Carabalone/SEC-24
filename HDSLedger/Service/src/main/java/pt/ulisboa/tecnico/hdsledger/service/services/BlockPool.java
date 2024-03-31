@@ -33,10 +33,13 @@ public class BlockPool {
 
     public Optional<Block> addRequest(LedgerRequest request) {
         synchronized (this.pool) {
-            this.pool.add(request);
+            if (!this.pool.contains(request)) {
+                this.pool.add(request);
+            }
         }
         return checkTransactionThreshold();
     }
+
 
     public void removeRequest(LedgerRequest request) {
         this.pool.remove(request);
@@ -53,10 +56,18 @@ public class BlockPool {
         synchronized (this.pool) {
             if (this.pool.size() < this.blockSize) return Optional.empty();
 
+            for (LedgerRequest req : this.pool) {
+                System.out.printf("[BLOCKPOOL]: INSIDE POLL ID CR7: %s\n", req.getSenderId());
+            }
+
             var block = new Block();
             for (int i = 0; i < this.blockSize; i++){
                 LedgerRequest req = this.pool.poll();
                 block.addRequest(req);
+            }
+
+            for (LedgerRequest req : block.getRequests()) {
+                System.out.printf("[BLOCKPOOL]: CURRENT BLOCK SENDER ID: %s\n", req.getSenderId());
             }
             return Optional.of(block);
         }
