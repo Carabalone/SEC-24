@@ -278,11 +278,6 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 new PrepareMessage(prePrepareMessage.getBlock());
 
 
-        LOGGER.log(Level.INFO,
-                MessageFormat.format(
-                        "Sending prepare message with VALUE: {0} ",
-                        prepareMessage.getBlock()));
-
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PREPARE)
                 .setConsensusInstance(consensusInstance)
                 .setRound(round)
@@ -389,7 +384,6 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 CommitMessage c = new CommitMessage(Block.getBlockJson(preparedBlock.get()), signedBlock);
                 instance.setCommitMessage(c);
                 ledger.addSignature(consensusInstance, config.getId(), signedBlock);
-                System.out.println("Digest of block: " + DigitalSignature.digest(Block.getBlockJson(preparedBlock.get())));
 
                 sendersMessage.forEach(senderMessage -> {
                     ConsensusMessage m = new ConsensusMessageBuilder(config.getId(), Message.Type.COMMIT)
@@ -479,7 +473,6 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
             instance = this.instanceInfo.get(consensusInstance);
             instance.setCommittedRound(round);
 
-            List<LedgerRequest> ledgerRequests = commitValue.get().getRequests();
 
             // Append value to the ledger (must be synchronized to be thread-safe)
             synchronized(ledger) {
@@ -495,7 +488,6 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                                     m.getConsensusInstance(), m.getSenderId(),
                                     m.deserializeCommitMessage().getSignature()
                             );
-                            System.out.println("Adding signature " + m.deserializeCommitMessage().getSignature() + "from " + m.getSenderId() + " to ledger");
                         });
 
                 ledger.addBlockAt(consensusInstance - 1, commitValue.get());
@@ -508,23 +500,28 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
             lastDecidedConsensusInstance.getAndIncrement();
 
+            List<LedgerRequest> ledgerRequests = commitValue.get().getRequests();
+
             for (LedgerRequest ledgerRequest: ledgerRequests) {
                 if (ledgerRequest.getType() == Message.Type.TRANSFER)
                     try {
                         transfer(ledgerRequest.deserializeTransfer());
-
-                        blockPool.accept(queue -> {
-                            for (LedgerRequest request : queue) {
-                                if (request.getRequest().equals(ledgerRequest.getRequest())) {
-                                    queue.remove(request);
-                                    return;
-                                }
-                            }
-                        });
-
                     } catch (HDSSException e) {
                         LOGGER.log(Level.SEVERE, e.getMessage());
                     }
+            }
+
+            for (LedgerRequest ledgerRequest: ledgerRequests) {
+                synchronized (blockPool) {
+                    blockPool.accept(queue -> {
+                        for (LedgerRequest request : queue) {
+                            if (request.getRequest().equals(ledgerRequest.getRequest())) {
+                                queue.remove(request);
+                                return;
+                            }
+                        }
+                    });
+                }
             }
 
 
@@ -541,6 +538,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
     }
 
     public void transfer(LedgerRequestTransfer ledgerRequest) {
+        System.out.printf("SENDER ID: %s\n", ledgerRequest.getSenderId());
+
         Optional<Account> sourceAccountOpt = ledger.getAccount(ledgerRequest.getSenderId());
         Optional<Account> destinationAccountOpt = ledger.getAccount(ledgerRequest.getDestinationId());
 
@@ -570,6 +569,9 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                             MessageFormat.format(
                                 "{0} - Transfer from client {1} to client {2} of amount {3} with fee {4} successful, new leader balance: {5}",
                                 config.getId(), sourceAccount.getId(), destinationAccount.getId(), amount, feeToBlockProducer, leaderAccount.getBalance()));
+
+                        System.out.printf("Source client balance: %d\n", sourceAccount.getBalance());
+                        System.out.printf("Destination client balance: %d\n", destinationAccount.getBalance());
 
                     }, () -> { throw new HDSSException(ErrorMessage.CannotFindAccount); });
                 }

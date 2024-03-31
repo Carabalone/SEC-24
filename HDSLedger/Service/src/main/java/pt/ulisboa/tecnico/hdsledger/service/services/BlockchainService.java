@@ -105,10 +105,14 @@ public class BlockchainService implements UDPService {
         if (!DigitalSignature.verifySignature(String.valueOf(ledgerRequest.getAmount()), ledgerRequest.getSignature(), clientConfig.getPublicKeyPath()))
             throw new HDSSException(ErrorMessage.InvalidSignature);
 
-        startConsensusIfBlock(blockPool.addRequest(message));
-        blockPool.accept(queue -> {
-            queue.add(message);
-        });
+        System.out.printf("[BLOCKCHAIN SERVICE]: SENDER ID %s%n", message.getSenderId());
+
+        synchronized (blockPool) {
+            blockPool.accept(queue -> {
+                queue.add(message);
+            });
+            startConsensusIfBlock(blockPool.addRequest(message));
+        }
 
         while (!consensusReached);
         System.out.println("[BLOCKCHAIN SERVICE]: Consensus reached");
