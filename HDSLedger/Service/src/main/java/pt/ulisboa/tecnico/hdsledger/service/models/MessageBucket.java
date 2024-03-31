@@ -91,6 +91,9 @@ public class MessageBucket {
     }
 
     public Map<String, ConsensusMessage> getMessages(int instance, int round) {
+        bucket.putIfAbsent(instance, new ConcurrentHashMap<>());
+        bucket.get(instance).putIfAbsent(round, new ConcurrentHashMap<>());
+
         if (bucket.get(instance) == null || bucket.get(instance).get(round) == null)
             return new ConcurrentHashMap<>();
 
