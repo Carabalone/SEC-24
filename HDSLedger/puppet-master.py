@@ -29,7 +29,7 @@ client_configs = [
 
 index = 0
 index_client = 0
-block_size = 2
+block_size = 3
 
 try:
     index = int(sys.argv[1])

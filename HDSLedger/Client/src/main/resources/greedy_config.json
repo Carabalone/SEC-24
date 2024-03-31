@@ -5,7 +5,8 @@
     "port": 4001,
     "publicKeyPath": "../keys/client/key_1_public.pem",
     "privateKeyPath": "../keys/client/key_1_private.pem",
-    "balance": "GREEDY_CLIENT"
+    "balance": 1000,
+    "failureType": "GREEDY_CLIENT"
   },
   {
     "id": "20",
@@ -13,7 +14,8 @@
     "port": 4002,
     "publicKeyPath": "../keys/client/key_2_public.pem",
     "privateKeyPath": "../keys/client/key_2_private.pem",
-    "balance": 1000
+    "balance": 1000,
+    "failureType": "NONE"
   },
   {
     "id": "30",
@@ -21,6 +23,7 @@
     "port": 4003,
     "publicKeyPath": "../keys/client/key_3_public.pem",
     "privateKeyPath": "../keys/client/key_3_private.pem",
-    "balance": 1000
+    "balance": 1000,
+    "failureType": "NONE"
   }
 ]
