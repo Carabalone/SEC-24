@@ -5,7 +5,7 @@
     "port": 4001,
     "publicKeyPath": "../keys/client/key_1_public.pem",
     "privateKeyPath": "../keys/client/key_1_private.pem",
-    "balance": 1000
+    "balance": "GREEDY_CLIENT"
   },
   {
     "id": "20",

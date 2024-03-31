@@ -5,6 +5,7 @@ import pt.ulisboa.tecnico.hdsledger.communication.LedgerRequest;
 import pt.ulisboa.tecnico.hdsledger.communication.Link;
 import pt.ulisboa.tecnico.hdsledger.service.services.BlockchainService;
 import pt.ulisboa.tecnico.hdsledger.service.services.NodeService;
+import pt.ulisboa.tecnico.hdsledger.service.services.BlockPool;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfigBuilder;
@@ -27,6 +28,7 @@ public class Node {
             String id = args[0];
             nodesConfigPath += args[1];
             clientsConfigPath += args[2];
+            int block_size = Integer.parseInt(args[3]);
 
             // Create configuration instances
             ProcessConfig[] nodeConfigs = new ProcessConfigBuilder().fromFile(nodesConfigPath);
@@ -51,12 +53,16 @@ public class Node {
             Link linkToClients = new Link(nodeConfig, nodeConfig.getClientPort(), clientConfigs,
                     LedgerRequest.class);
 
+            BlockPool blockPool = new BlockPool(block_size);
+
             // Services that implement listen from UDPService
-            NodeService nodeService = new NodeService(linkToNodes, linkToClients, nodeConfig, leaderConfig, nodeConfigs, clientConfigs);
+            NodeService nodeService = new NodeService(linkToNodes, linkToClients,
+                    nodeConfig, leaderConfig, nodeConfigs, clientConfigs,
+                    blockPool);
 
             BlockchainService blockchainService = new BlockchainService(linkToNodes, linkToClients,
-                    nodeConfig, nodeConfigs, clientConfigs, nodeService
-            );
+                    nodeConfig, nodeConfigs, clientConfigs, nodeService,
+                    blockPool);
 
             nodeService.setBlockchainService(blockchainService);
 

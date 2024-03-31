@@ -11,10 +11,11 @@ public enum ErrorMessage {
     FailedToReadPublicKey("Could not read the public key"),
     CannotParseMessage("Could not parse the message"),
     ClientNotFound("Client not found"),
-    CannotTranferNegativeAmount("Cannot transfer a negative amount"),
+    CannotTransferNegativeAmount("Cannot transfer a negative amount"),
     CannotTransferToSelf("Cannot transfer to self"),
     InsufficientFunds("Insufficient funds"),
-    CannotFindAccount("Cannot Find account");
+    CannotFindAccount("Cannot Find account"),
+    CannotTransferToNode("Cannot transfer to a node");
 
     private final String message;
 

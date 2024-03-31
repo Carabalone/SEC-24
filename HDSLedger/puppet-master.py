@@ -29,6 +29,7 @@ client_configs = [
 
 index = 0
 index_client = 0
+block_size = 1
 
 try:
     index = int(sys.argv[1])
@@ -69,7 +70,7 @@ with open(f"Service/src/main/resources/{server_config}") as f:
         pid = os.fork()
         if pid == 0:
             os.system(
-                f"{terminal} sh -c \"cd Service; mvn exec:java -Dexec.args='{key['id']} {server_config} {client_config}' ; sleep 500\"")
+                f"{terminal} sh -c \"cd Service; mvn exec:java -Dexec.args='{key['id']} {server_config} {client_config} {block_size}' ; sleep 500\"")
             sys.exit()
 
 with open(f"Client/src/main/resources/{client_config}") as f:

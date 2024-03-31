@@ -29,9 +29,11 @@ public class BlockchainService implements UDPService {
 
     private volatile boolean consensusReached;
 
+    private BlockPool blockPool;
+
     public BlockchainService(Link nodesLink, Link clientsLink, ProcessConfig selfConfig,
                              ProcessConfig[] nodesConfig, ProcessConfig[] clientsConfig,
-                             NodeService nodeService) {
+                             NodeService nodeService, BlockPool blockPool) {
 
         this.nodesLink = nodesLink;
         this.clientsLink = clientsLink;
@@ -39,6 +41,7 @@ public class BlockchainService implements UDPService {
         this.nodesConfig = nodesConfig;
         this.clientsConfig = clientsConfig;
         this.nodeService = nodeService;
+        this.blockPool = blockPool;
         this.consensusReached = false;
     }
 

@@ -65,8 +65,11 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
     private long feeToBlockProducer = 50;
 
+    private BlockPool blockPool;
+
     public NodeService(Link nodesLink, Link clientsLink,
-                       ProcessConfig config, ProcessConfig leaderConfig, ProcessConfig[] nodesConfig, ProcessConfig[] clientsConfig) {
+                       ProcessConfig config, ProcessConfig leaderConfig, ProcessConfig[] nodesConfig, ProcessConfig[] clientsConfig,
+                       BlockPool blockPool) {
 
         this.nodesLink = nodesLink;
         this.clientsLink = clientsLink;
@@ -78,6 +81,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
         this.nodesConfig = nodesConfig;
         this.clientsConfig = clientsConfig;
+
+        this.blockPool = blockPool;
 
         Arrays.stream(nodesConfig).forEach(n -> {
             ledger.addAccount(new Account(n.getId(), n.getBalance(), Account.Type.NODE));
@@ -541,7 +546,9 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
                 if (sourceAccount.getId().equals(destinationAccount.getId())) throw new HDSSException(ErrorMessage.CannotTransferToSelf);
                 if (sourceBalance < amount + feeToBlockProducer) throw new HDSSException(ErrorMessage.InsufficientFunds);
-                if (sourceBalance <= 0) throw new HDSSException(ErrorMessage.CannotTranferNegativeAmount);
+                if (sourceBalance <= 0) throw new HDSSException(ErrorMessage.CannotTransferNegativeAmount);
+                if (sourceAccount.getType() != Account.Type.CLIENT || destinationAccount.getType() != Account.Type.CLIENT)
+                    throw new HDSSException(ErrorMessage.CannotTransferToNode);
 
                 destinationAccount.addBalance(amount);
                 sourceAccount.subtractBalance(amount + feeToBlockProducer);

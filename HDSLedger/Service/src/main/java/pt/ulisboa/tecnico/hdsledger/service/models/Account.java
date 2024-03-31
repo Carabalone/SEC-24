@@ -9,8 +9,11 @@ public class Account {
     }
 
     private final String id;
+
     private long balance;
+
     private Type type;
+
 
     public Account(String id, long balance, Type type) {
         this.id = id;
@@ -38,4 +41,5 @@ public class Account {
         return balance;
     }
 
+    public Type getType() { return type; }
 }

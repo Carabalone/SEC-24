@@ -1,18 +1,19 @@
 package pt.ulisboa.tecnico.hdsledger.service.models;
 
-import pt.ulisboa.tecnico.hdsledger.utilities.DigitalSignature;
-
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Ledger {
+
     private ArrayList<Block> ledger;
     // id -> account;
     private Map<String, Account> accounts;
+
     private Map<String, Account> accountDangerZone;
     // consensus instance -> id -> signature (DS.sign(value, node_pk))
+
     private Map<Integer, Map<String, String>> signatures;
 
     public Ledger() {
