@@ -8,7 +8,7 @@
         "publicKeyPath": "../keys/node/key_1_public.pem",
         "privateKeyPath": "../keys/node/key_1_private.pem",
         "balance": 1000,
-        "failureType": "NONE"
+        "failureType": "SILENT_LEADER"
     },
     {
         "id": "2",
@@ -40,6 +40,39 @@
         "clientPort": 3014,
         "publicKeyPath": "../keys/node/key_4_public.pem",
         "privateKeyPath": "../keys/node/key_4_private.pem",
+        "balance": 1000,
+        "failureType": "NONE"
+    },
+    {
+        "id": "5",
+        "isLeader": false,
+        "hostname": "localhost",
+        "port": 3005,
+        "clientPort": 3015,
+        "publicKeyPath": "../keys/node/key_5_public.pem",
+        "privateKeyPath": "../keys/node/key_5_private.pem",
+        "balance": 1000,
+        "failureType": "NONE"
+    },
+    {
+        "id": "6",
+        "isLeader": false,
+        "hostname": "localhost",
+        "port": 3006,
+        "clientPort": 3016,
+        "publicKeyPath": "../keys/node/key_6_public.pem",
+        "privateKeyPath": "../keys/node/key_6_private.pem",
+        "balance": 1000,
+        "failureType": "NONE"
+    },
+    {
+        "id": "7",
+        "isLeader": false,
+        "hostname": "localhost",
+        "port": 3007,
+        "clientPort": 3017,
+        "publicKeyPath": "../keys/node/key_7_public.pem",
+        "privateKeyPath": "../keys/node/key_7_private.pem",
         "balance": 1000,
         "failureType": "NONE"
     }

@@ -172,7 +172,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         }
 
         // Leader broadcasts PRE-PREPARE message
-        if (this.config.isLeader()) {
+        if (this.config.isLeader() || config.hasFailureType(ProcessConfig.FailureType.FAKE_LEADER) || config.hasFailureType(ProcessConfig.FailureType.DICTATOR_LEADER)) {
             if (config.getFailureType() == ProcessConfig.FailureType.SILENT_LEADER) {
                 LOGGER.log(Level.INFO,
                         "[SILENT-LEADER] - Will not Broadcast Pre-Prepare..."
