@@ -58,12 +58,14 @@ public class Library {
     }
 
     private void addResponse(int requestId, Message response) {
-        List<Message> responses = this.responses.get(requestId);
-        if (responses == null) {
-            responses = new ArrayList<>();
-            this.responses.put(requestId, responses);
+        synchronized (this.responses) {
+            List<Message> responses = this.responses.get(requestId);
+            if (responses == null) {
+                responses = new ArrayList<>();
+                this.responses.put(requestId, responses);
+            }
+            responses.add(response);
         }
-        responses.add(response);
     }
 
     public Optional<PublicKey> getPublicKey(String accountId) {
@@ -110,20 +112,30 @@ public class Library {
         // check if any of the responses is valid and return that balance
 
         AtomicInteger filterCount = new AtomicInteger(0);
-        AtomicInteger beforeFilterCount = new AtomicInteger(0);
+        AtomicInteger afterBalanceFilter = new AtomicInteger(0);
+        AtomicInteger beforeBalanceFilter = new AtomicInteger(0);
         synchronized (responses) {
+
+            int amountOfResponses = responses.get(clientRequestId).size();
+
+            System.out.println("there are " + amountOfResponses + " responses in hte bucket");
+
             Optional<LedgerResponseBalance> response = responses.get(clientRequestId).stream()
                     .map(r -> (LedgerResponse) r)
+                    .peek(r -> System.out.printf(r.getTypeOfSerializedMessage() + "\n"))
+                    .peek(r -> beforeBalanceFilter.getAndIncrement())
+                    .filter(r -> r.getTypeOfSerializedMessage() == Message.Type.BALANCE)
                     .map(r -> r.deserializeBalance())
 //                    .peek(r -> System.out.println("Response: " + r.getSenderId()))
-//                    .peek(r -> beforeFilterCount.getAndIncrement())
+                    .peek(r -> afterBalanceFilter.getAndIncrement())
                     .filter(r -> verifyBalanceResponse(r))
-//                    .peek(r -> filterCount.getAndIncrement())
+                    .peek(r -> filterCount.getAndIncrement())
 //                    .peek(r -> System.out.println("Valid response: " + r.getSenderId()))
                     .findAny();
 
+            System.out.println("BeforeBalanceFilter count: " + beforeBalanceFilter.get());
+            System.out.println("AfterBalanceFilter count: " + afterBalanceFilter.get());
             System.out.println("Filter count: " + filterCount.get());
-            System.out.println("BeforeFilter count: " + beforeFilterCount.get());
 
             if (response.isEmpty()) {
                 System.out.println("Could not find a valid response");
@@ -183,6 +195,7 @@ public class Library {
         Map<String, String> signatures = response.getSignatures();
 
         if (signatures.size() < 2 * maxFaults() + 1) {
+            System.out.println("[BALANCE] - There are not enough signatures, not accepting");
             return false;
         }
 
@@ -191,13 +204,16 @@ public class Library {
                 try {
                     return DigitalSignature.decrypt(entry.getValue().getBytes(), findNodeConfig(entry.getKey()).get().getPublicKeyPath());
                 } catch (Exception e){
+                    e.printStackTrace();
                     throw new HDSSException(ErrorMessage.FailedToReadPublicKey);
                 }
             }).collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+            System.out.println("Frequency map length: " + frequencyMap.entrySet().size());
 
             return frequencyMap.entrySet().stream().anyMatch(entry -> entry.getValue() >= 2 * maxFaults() + 1);
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Exception while verifying balance response");
+            System.out.println("Exception when verifying balance response");
+            e.printStackTrace();
             return false;
         }
     }

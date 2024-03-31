@@ -493,9 +493,13 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
                 // add signature from other nodes
                 commitMessages.getMessages(consensusInstance, round).values()
-                        .forEach(m -> ledger.addSignature(
-                                m.getConsensusInstance(), m.getSenderId(), m.deserializeCommitMessage().getSignature())
-                        );
+                        .forEach(m -> {
+                            ledger.addSignature(
+                                    m.getConsensusInstance(), m.getSenderId(),
+                                    m.deserializeCommitMessage().getSignature()
+                            );
+                            System.out.println("Adding signature " + m.deserializeCommitMessage().getSignature() + "from " + m.getSenderId() + " to ledger");
+                        });
 
                 ledger.addBlockAt(consensusInstance - 1, commitValue.get());
 
