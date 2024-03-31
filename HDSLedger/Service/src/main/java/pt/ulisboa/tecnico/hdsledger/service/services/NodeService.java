@@ -399,20 +399,26 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
             sendersMessage.forEach(System.out::println);
 
             // TODO: CUIDADO COM OS TOJSON
-            CommitMessage c = new CommitMessage(Block.getBlockJson(preparedBlock.get()));
-            instance.setCommitMessage(c);
+            try {
+                String signedBlock = DigitalSignature.sign(Block.getBlockJson(preparedBlock.get()), config.getPrivateKeyPath());
+                CommitMessage c = new CommitMessage(Block.getBlockJson(preparedBlock.get()), signedBlock);
+                instance.setCommitMessage(c);
+                ledger.addSignature(consensusInstance, config.getId(), signedBlock);
 
-            sendersMessage.forEach(senderMessage -> {
-                ConsensusMessage m = new ConsensusMessageBuilder(config.getId(), Message.Type.COMMIT)
-                        .setConsensusInstance(consensusInstance)
-                        .setRound(round)
-                        .setReplyTo(senderMessage.getSenderId())
-                        .setReplyToMessageId(senderMessage.getMessageId())
-                        .setMessage(c.toJson())
-                        .build();
+                sendersMessage.forEach(senderMessage -> {
+                    ConsensusMessage m = new ConsensusMessageBuilder(config.getId(), Message.Type.COMMIT)
+                            .setConsensusInstance(consensusInstance)
+                            .setRound(round)
+                            .setReplyTo(senderMessage.getSenderId())
+                            .setReplyToMessageId(senderMessage.getMessageId())
+                            .setMessage(c.toJson())
+                            .build();
 
-                nodesLink.send(senderMessage.getSenderId(), m);
-            });
+                    nodesLink.send(senderMessage.getSenderId(), m);
+                });
+            } catch (Exception e) {
+                LOGGER.log(Level.SEVERE, "[PREPARE] couldn't sign message... will not send commit");
+            }
         } else if (preparedBlock.isEmpty()) {
             System.out.println("[PREPARE] There is no quorum for this instance and round");
         } else {
@@ -496,6 +502,12 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 ledger.ensureCapacity(consensusInstance);
                 while (ledger.size() < consensusInstance - 1)
                     ledger.addBlock(null);
+
+                // add signature from other nodes
+                commitMessages.getMessages(consensusInstance, round).values()
+                        .forEach(m -> ledger.addSignature(
+                                m.getConsensusInstance(), m.getSenderId(), m.deserializeCommitMessage().getSignature())
+                        );
 
                 ledger.addBlockAt(consensusInstance - 1, commitValue.get());
                 setLastCommittedBlock(commitValue.get());

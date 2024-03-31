@@ -103,7 +103,9 @@ public class BlockchainService implements UDPService {
                 .getBalance();
 
         LedgerResponseBalance ledgerResponse = new LedgerResponseBalance(this.selfConfig.getId(),
-                                            balance, nodeService.getLastDecidedConsensusInstance());
+                                balance, nodeService.getLastDecidedConsensusInstance(),
+                                nodeService.getLedger().getSignatures(nodeService.getLastDecidedConsensusInstance()));
+
         sendResponse(ledgerResponse, message.getSenderId(), message.getRequestId(), Message.Type.BALANCE);
     }
 

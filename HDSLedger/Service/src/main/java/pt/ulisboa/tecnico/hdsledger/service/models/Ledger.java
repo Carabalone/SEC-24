@@ -7,14 +7,17 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class Ledger {
     private ArrayList<Block> ledger;
-    // id -> accounts;
+    // id -> account;
     private Map<String, Account> accounts;
     private Map<String, Account> accountDangerZone;
+    // consensus instance -> id -> signature (DS.sign(value, node_pk))
+    private Map<Integer, Map<String, String>> signatures;
 
     public Ledger() {
         ledger = new ArrayList<>();
         accounts = new ConcurrentHashMap<>();
         accountDangerZone = new ConcurrentHashMap<>();
+        signatures = new ConcurrentHashMap<>();
     }
 
     public void addBlock(Block block) {
@@ -46,5 +49,15 @@ public class Ledger {
 
     public int size() {
         return ledger.size();
+    }
+
+    public Map<String, String> getSignatures(int consensusInstance) {
+        signatures.putIfAbsent(consensusInstance, new ConcurrentHashMap<>());
+        return signatures.get(consensusInstance);
+    }
+
+    public void addSignature(int consensusInstance, String id, String signedBlock) {
+        signatures.putIfAbsent(consensusInstance, new ConcurrentHashMap<>());
+        signatures.get(consensusInstance).put(id, signedBlock);
     }
 }
