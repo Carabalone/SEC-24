@@ -18,7 +18,7 @@ public class Node {
     // Hardcoded path to files
     private static String nodesConfigPath = "src/main/resources/";
 
-    private static final String clientsConfigPath = "../Client/src/main/resources/regular_config.json";
+    private static String clientsConfigPath = "../Client/src/main/resources/";
 
     public static void main(String[] args) {
 
@@ -26,6 +26,7 @@ public class Node {
             // Command line arguments
             String id = args[0];
             nodesConfigPath += args[1];
+            clientsConfigPath += args[2];
 
             // Create configuration instances
             ProcessConfig[] nodeConfigs = new ProcessConfigBuilder().fromFile(nodesConfigPath);

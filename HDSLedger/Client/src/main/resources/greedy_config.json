@@ -14,5 +14,13 @@
     "publicKeyPath": "../keys/client/key_2_public.pem",
     "privateKeyPath": "../keys/client/key_2_private.pem",
     "balance": 1000
+  },
+  {
+    "id": "30",
+    "hostname": "localhost",
+    "port": 4003,
+    "publicKeyPath": "../keys/client/key_3_public.pem",
+    "privateKeyPath": "../keys/client/key_3_private.pem",
+    "balance": 1000
   }
 ]
