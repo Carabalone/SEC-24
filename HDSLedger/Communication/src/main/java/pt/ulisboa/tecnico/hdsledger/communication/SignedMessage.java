@@ -2,6 +2,7 @@ package pt.ulisboa.tecnico.hdsledger.communication;
 
 import java.io.Serializable;
 
+
 public class SignedMessage implements Serializable {
 
     // Message content

@@ -1,19 +1,22 @@
 package pt.ulisboa.tecnico.hdsledger.service.models;
 
-
 import pt.ulisboa.tecnico.hdsledger.communication.CommitMessage;
-import pt.ulisboa.tecnico.hdsledger.communication.PrepareMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.RoundChangeMessage;
+
 
 public class InstanceInfo {
 
     private int currentRound = 1;
-    private int preparedRound = -1;
-    private Block preparedBlock;
-    private CommitMessage commitMessage;
-    private Block inputBlock;
-    private int committedRound = -1;
 
+    private int preparedRound = -1;
+
+    private Block preparedBlock;
+
+    private CommitMessage commitMessage;
+
+    private Block inputBlock;
+
+    private int committedRound = -1;
 
     private RoundChangeMessage roundChangeMessage;
 
@@ -41,12 +44,12 @@ public class InstanceInfo {
         return preparedBlock;
     }
 
+
     public String getPreparedBlockString() {
-        if (preparedBlock == null)
-            return null;
-        else
-            return preparedBlock.toJson();
+        if (preparedBlock == null) return null;
+        else return preparedBlock.toJson();
     }
+
     public void setPreparedBlock(Block preparedBlock) { this.preparedBlock = preparedBlock; }
 
     public Block getInputBlock() {

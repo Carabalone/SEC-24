@@ -1,10 +1,7 @@
 package pt.ulisboa.tecnico.hdsledger.communication;
 
 import com.google.gson.Gson;
-import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class ConsensusMessage extends Message {
 

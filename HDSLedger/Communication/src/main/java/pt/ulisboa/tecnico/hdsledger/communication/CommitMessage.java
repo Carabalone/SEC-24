@@ -2,6 +2,7 @@ package pt.ulisboa.tecnico.hdsledger.communication;
 
 import com.google.gson.Gson;
 
+
 public class CommitMessage {
 
     private String block;

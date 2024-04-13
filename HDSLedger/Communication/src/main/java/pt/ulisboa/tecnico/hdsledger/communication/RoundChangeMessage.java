@@ -2,18 +2,21 @@ package pt.ulisboa.tecnico.hdsledger.communication;
 
 import com.google.gson.Gson;
 
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
 
 public class RoundChangeMessage {
 
     private int consensusInstance;
-    private int currentRound;
-    private int preparedRound;
-    private String preparedBlock;
-    private Map<String, ConsensusMessage> justification = new ConcurrentHashMap<>();
 
+    private int currentRound;
+
+    private int preparedRound;
+
+    private String preparedBlock;
+
+    private Map<String, ConsensusMessage> justification = new ConcurrentHashMap<>();
 
 
     public RoundChangeMessage(int consensusInstance, int currentRound, int preparedRound, String preparedBlock) {
@@ -31,7 +34,6 @@ public class RoundChangeMessage {
         this.preparedBlock = preparedBlock;
         this.justification = justification;
     }
-
 
     public int getConsensusInstance() {
         return consensusInstance;

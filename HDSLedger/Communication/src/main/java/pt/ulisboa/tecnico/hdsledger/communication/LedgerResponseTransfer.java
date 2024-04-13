@@ -1,5 +1,6 @@
 package pt.ulisboa.tecnico.hdsledger.communication;
 
+
 public class LedgerResponseTransfer extends Message {
 
     private long sourceBalance;
@@ -7,6 +8,7 @@ public class LedgerResponseTransfer extends Message {
     private long destinationBalance;
 
     private long payedFee;
+
 
     public LedgerResponseTransfer(String senderId, long sourceBalance, long destinationBalance, long payedFee) {
         super(senderId, Type.REPLY);

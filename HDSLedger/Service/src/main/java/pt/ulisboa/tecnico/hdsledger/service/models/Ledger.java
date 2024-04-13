@@ -8,12 +8,13 @@ import java.util.concurrent.ConcurrentHashMap;
 public class Ledger {
 
     private ArrayList<Block> ledger;
+
     // id -> account;
     private Map<String, Account> accounts;
 
     private Map<String, Account> accountDangerZone;
-    // consensus instance -> id -> signature (DS.sign(value, node_pk))
 
+    // consensus instance -> id -> signature (DS.sign(value, node_pk))
     private Map<Integer, Map<String, String>> signatures;
 
     public Ledger() {
@@ -30,9 +31,8 @@ public class Ledger {
     public ConcurrentHashMap<String, Long> getAccountBalances() {
         ConcurrentHashMap<String, Long> map = new ConcurrentHashMap<>();
 
-        for (var entry : accounts.entrySet()) {
+        for (var entry : accounts.entrySet())
             map.put(entry.getKey(), entry.getValue().getBalance());
-        }
         return map;
     }
 

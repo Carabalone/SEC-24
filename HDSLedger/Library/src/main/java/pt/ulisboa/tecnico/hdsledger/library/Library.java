@@ -6,7 +6,6 @@ import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
 import java.io.IOException;
 import java.security.PublicKey;
-import java.sql.SQLOutput;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,13 +14,14 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+
 public class Library {
+
     private static final CustomLogger LOGGER = new CustomLogger(Library.class.getName());
 
     private final ProcessConfig[] nodeConfigs;
 
     private final ProcessConfig[] clientConfigs;
-
 
     // Client identifier (self)
     private final ProcessConfig config;
@@ -154,7 +154,6 @@ public class Library {
             System.out.println("Destination does not exist, not continuing operation");
             return;
         }
-
 
         if (destinationId.equals(this.config.getId()) && this.config.getFailureType() != ProcessConfig.FailureType.GREEDY_CLIENT) {
             System.out.println("Cannot transfer to self");

@@ -12,7 +12,9 @@ import java.util.Arrays;
 import java.util.Optional;
 import java.util.logging.Level;
 
+
 public class BlockchainService implements UDPService {
+
     private static final CustomLogger LOGGER = new CustomLogger(BlockchainService.class.getName());
 
     private final ProcessConfig selfConfig;

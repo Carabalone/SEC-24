@@ -7,12 +7,12 @@ import java.security.PublicKey;
 
 public class LedgerRequestBalance extends Message {
 
-    public enum Consistency {
-        WEAK, STRONG;
-    }
+    public enum Consistency { WEAK, STRONG;}
+
     private String clientKey;
 
     private String clientId;
+
     private final Consistency consistency;
 
 

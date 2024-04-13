@@ -1,12 +1,9 @@
 package pt.ulisboa.tecnico.hdsledger.service.models;
 
-import java.util.ArrayList;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class Account {
-    public enum Type {
-        NODE, CLIENT;
-    }
+
+    public enum Type { NODE, CLIENT;}
 
     private final String id;
 
@@ -22,24 +19,16 @@ public class Account {
     }
 
     public boolean subtractBalance(long amount) {
-        if (balance - amount < 0 ) {
-            return false;
-        }
+        if (balance - amount < 0 ) return false;
         balance -= amount;
         return true;
     }
 
-    public void addBalance(long amount) {
-        balance += amount;
-    }
+    public void addBalance(long amount) { balance += amount; }
 
-    public String getId() {
-        return id;
-    }
+    public String getId() { return id; }
 
-    public long getBalance() {
-        return balance;
-    }
+    public long getBalance() { return balance; }
 
     public Type getType() { return type; }
 }

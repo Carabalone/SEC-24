@@ -5,7 +5,6 @@ import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.communication.Message.Type;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
-import javax.sound.midi.Soundbank;
 import java.io.IOException;
 import java.net.*;
 import java.text.MessageFormat;
@@ -15,6 +14,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.LogManager;
+
 
 public class Link {
 
@@ -79,9 +79,7 @@ public class Link {
             throw new HDSSException(ErrorMessage.CannotOpenSocket);
         }
 
-        if (!activateLogs) {
-            LogManager.getLogManager().reset();
-        }
+        if (!activateLogs) LogManager.getLogManager().reset();
     }
 
     public void ackAll(List<Integer> messageIds) {

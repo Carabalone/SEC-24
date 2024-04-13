@@ -8,11 +8,14 @@ import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.PrepareMessage;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 
+
 public class MessageBucket {
 
     private static final CustomLogger LOGGER = new CustomLogger(MessageBucket.class.getName());
+
     // Quorum size
     private final int quorumSize;
+
     // Instance -> Round -> Sender ID -> Consensus message
     private final Map<Integer, Map<Integer, Map<String, ConsensusMessage>>> bucket = new ConcurrentHashMap<>();
 
@@ -41,9 +44,8 @@ public class MessageBucket {
         // Create mapping of value to frequency
         HashMap<Block, Integer> frequency = new HashMap<>();
 
-        if (bucket.get(instance) == null || bucket.get(instance).get(round) == null) {
+        if (bucket.get(instance) == null || bucket.get(instance).get(round) == null)
             return Optional.empty();
-        }
 
         bucket.get(instance).get(round).values().forEach((message) -> {
             PrepareMessage prepareMessage = message.deserializePrepareMessage();
@@ -63,9 +65,8 @@ public class MessageBucket {
 
     public Optional<Block> hasValidCommitQuorum(String nodeId, int instance, int round) {
 
-        if (bucket.get(instance) == null || bucket.get(instance).get(round) == null) {
+        if (bucket.get(instance) == null || bucket.get(instance).get(round) == null)
             return Optional.empty();
-        }
 
         // Create mapping of value to frequency
         HashMap<Block, Integer> frequency = new HashMap<>();

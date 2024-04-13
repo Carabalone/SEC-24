@@ -1,17 +1,19 @@
 package pt.ulisboa.tecnico.hdsledger.communication;
 
 import com.google.gson.Gson;
-import com.sun.tools.jconsole.JConsoleContext;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
 
 public class PrePrepareMessage {
 
     private String block;
 
     private String leaderSignature;
+
     private Map<String, ConsensusMessage> justification = new ConcurrentHashMap<>();
+
 
     public PrePrepareMessage(String block/*, String leaderSignature*/) {
         this.block = block;

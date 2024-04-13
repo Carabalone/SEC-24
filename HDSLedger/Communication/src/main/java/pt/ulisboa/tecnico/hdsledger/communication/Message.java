@@ -2,6 +2,7 @@ package pt.ulisboa.tecnico.hdsledger.communication;
 
 import java.io.Serializable;
 
+
 public class Message implements Serializable {
 
     // Sender identifier

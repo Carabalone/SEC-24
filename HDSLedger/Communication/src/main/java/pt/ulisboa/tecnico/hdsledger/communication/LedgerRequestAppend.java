@@ -1,5 +1,6 @@
 package pt.ulisboa.tecnico.hdsledger.communication;
 
+
 public class LedgerRequestAppend extends Message {
 
     private String value;

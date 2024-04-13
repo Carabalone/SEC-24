@@ -8,10 +8,12 @@ import java.util.Arrays;
 import java.util.Optional;
 import java.util.Scanner;
 
+
 public class Client {
     private static final String nodePath = "../Service/src/main/resources/";
 
     private static final String clientPath = "src/main/resources/";
+
 
     private static void help() {
         System.out.println("Welcome to the Serenity Ledger");
@@ -63,6 +65,7 @@ public class Client {
                             library.checkBalance(terms[1], LedgerRequestBalance.Consistency.WEAK);
                             break;
                         }
+
                         if (terms.length >= 3 && terms[1].equals("strong")) {
                             System.out.println("Strong balance read:");
                             library.checkBalance(terms[2], LedgerRequestBalance.Consistency.STRONG);
@@ -109,7 +112,6 @@ public class Client {
                         System.out.println("16 seconds passed, timer 4 would have expired by now, lets restart it for 4 seconds");
                         timer4.startOrRestart(2);
                         Thread.sleep(5 * 1000);
-
                     }
 
                     case "testTimer2" -> {
@@ -139,7 +141,6 @@ public class Client {
                         timer1.stop();
 
                         System.out.println("Ended test.");
-
                     }
 
                     default -> System.out.println("unrecognized command");

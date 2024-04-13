@@ -1,5 +1,6 @@
 package pt.ulisboa.tecnico.hdsledger.communication;
 
+
 public class LedgerRequestTransfer extends Message {
 
     private String destinationId;

@@ -8,8 +8,11 @@ import com.google.gson.Gson;
 
 import pt.ulisboa.tecnico.hdsledger.communication.LedgerRequest;
 
+
 public class Block {
+
     private int consensusInstance;
+
     private String description;
 
     private List<LedgerRequest> requests;
@@ -43,6 +46,7 @@ public class Block {
     public void setDescription(String description) {
         this.description = description;
     }
+
     public int getConsensusInstance() {
         return consensusInstance;
     }
@@ -73,12 +77,9 @@ public class Block {
     }
 
     public static String getBlockJson(Block block) {
-        if (block == null)
-            return null;
-        else
-            return block.toJson();
+        if (block == null) return null;
+        else return block.toJson();
     }
-
 
     public String toJson() { return new Gson().toJson(this); }
 

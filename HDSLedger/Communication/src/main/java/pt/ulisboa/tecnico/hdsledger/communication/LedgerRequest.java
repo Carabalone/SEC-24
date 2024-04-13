@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 
 import java.util.Objects;
 
+
 public class LedgerRequest extends Message {
 
     // Serialized request
