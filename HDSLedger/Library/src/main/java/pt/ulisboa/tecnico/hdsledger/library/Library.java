@@ -152,21 +152,28 @@ public class Library {
         }
 
         LedgerRequest ledgerRequest = new LedgerRequest(this.config.getId(), Message.Type.TRANSFER, clientRequestId, serializedRequest, requestSignature);
-        this.link.broadcast(ledgerRequest);
 
-        System.out.printf("[LIBRARY] WAITING UNTIL BLOCK IS DECIDED: \n", request.getMessageId());
-        waitForMinSetOfResponses(ledgerRequest.getRequestId());
+        Thread requestThread = new Thread(() -> {
+            this.link.broadcast(ledgerRequest);
 
-        LedgerResponse ledgerResponse = (LedgerResponse) responses.get(clientRequestId).get(0);
-        LedgerResponseTransfer ledgerResponseTransfer = ledgerResponse.deserializeTransfer();
-        long sourceBalance = ledgerResponseTransfer.getSourceBalance();
-        long destinationBalance = ledgerResponseTransfer.getDestinationBalance();
-        long payedFee = ledgerResponseTransfer.getPayedFee();
+            System.out.printf("[LIBRARY] SENT TRANSFER REQUEST: %d\n", request.getMessageId());
+            System.out.printf("[LIBRARY] WAITING UNTIL BLOCK IS DECIDED: \n", request.getMessageId());
+            System.out.print("$ ");
+            waitForMinSetOfResponses(ledgerRequest.getRequestId());
 
-        System.out.println("[LIBRARY] Transferred " + amount + " to " + destinationId);
-        System.out.println("[LIBRARY] Payed fee to block producer: " + payedFee);
-        System.out.printf("[LIBRARY] My balance: %d\n", sourceBalance);
-        System.out.printf("[LIBRARY] Destination Balance: %d\n", destinationBalance);
+            LedgerResponse ledgerResponse = (LedgerResponse) responses.get(clientRequestId).get(0);
+            LedgerResponseTransfer ledgerResponseTransfer = ledgerResponse.deserializeTransfer();
+            long sourceBalance = ledgerResponseTransfer.getSourceBalance();
+            long destinationBalance = ledgerResponseTransfer.getDestinationBalance();
+            long payedFee = ledgerResponseTransfer.getPayedFee();
+
+            System.out.println("[LIBRARY] Transferred " + amount + " to " + destinationId);
+            System.out.println("[LIBRARY] Payed fee to block producer: " + payedFee);
+            System.out.printf("[LIBRARY] My balance: %d\n", sourceBalance);
+            System.out.printf("[LIBRARY] Destination Balance: %d\n", destinationBalance);
+        });
+
+        requestThread.start();
     }
 
     private void addResponse(int requestId, Message response) {

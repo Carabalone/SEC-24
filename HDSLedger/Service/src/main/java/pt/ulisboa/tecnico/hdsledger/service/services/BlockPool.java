@@ -3,6 +3,7 @@ package pt.ulisboa.tecnico.hdsledger.service.services;
 import pt.ulisboa.tecnico.hdsledger.communication.LedgerRequest;
 import pt.ulisboa.tecnico.hdsledger.service.models.Block;
 
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.Optional;
 import java.util.Queue;
@@ -57,6 +58,9 @@ public class BlockPool {
             if (this.pool.size() < this.blockSize) return Optional.empty();
 
             var block = new Block();
+
+            // sort pool by request id
+            this.pool.stream().sorted(Comparator.comparing(LedgerRequest::getRequestId));
 
             for (int i = 0; i < this.blockSize; i++){
                 LedgerRequest req = this.pool.poll();
