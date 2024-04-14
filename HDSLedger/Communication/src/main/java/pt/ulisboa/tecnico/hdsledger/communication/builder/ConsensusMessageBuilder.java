@@ -5,7 +5,9 @@ import pt.ulisboa.tecnico.hdsledger.communication.Message;
 
 
 public class ConsensusMessageBuilder {
+
     private final ConsensusMessage instance;
+
 
     public ConsensusMessageBuilder(String sender, Message.Type type) {
         instance = new ConsensusMessage(sender, type);

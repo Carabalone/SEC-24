@@ -20,6 +20,7 @@ public class InstanceInfo {
 
     private RoundChangeMessage roundChangeMessage;
 
+
     public InstanceInfo(Block inputBlock) {
         this.inputBlock = inputBlock;
     }
@@ -43,7 +44,6 @@ public class InstanceInfo {
     public Block getPreparedBlock() {
         return preparedBlock;
     }
-
 
     public String getPreparedBlockString() {
         if (preparedBlock == null) return null;

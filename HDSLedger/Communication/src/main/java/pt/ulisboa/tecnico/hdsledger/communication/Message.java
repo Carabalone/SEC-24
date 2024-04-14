@@ -7,8 +7,10 @@ public class Message implements Serializable {
 
     // Sender identifier
     private String senderId;
+
     // Message identifier
     private int messageId;
+
     // Message type
     private Type type;
 

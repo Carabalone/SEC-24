@@ -7,14 +7,19 @@ public class ConsensusMessage extends Message {
 
     // Consensus instance
     private int consensusInstance;
+
     // Round
     private int round;
+
     // Who sent the previous message
     private String replyTo;
+
     // Id of the previous message
     private int replyToMessageId;
+
     // Message (PREPREPARE, PREPARE, COMMIT)
     private String message;
+
 
     public ConsensusMessage(String senderId, Type type) {
         super(senderId, type);

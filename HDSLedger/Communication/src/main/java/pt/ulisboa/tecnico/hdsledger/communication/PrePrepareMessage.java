@@ -10,39 +10,23 @@ public class PrePrepareMessage {
 
     private String block;
 
-    private String leaderSignature;
-
     private Map<String, ConsensusMessage> justification = new ConcurrentHashMap<>();
 
 
-    public PrePrepareMessage(String block/*, String leaderSignature*/) {
+    public PrePrepareMessage(String block) {
         this.block = block;
-        this.leaderSignature = "TODO: tirar";
     }
 
-    public PrePrepareMessage(String block/*, String leaderSignature*/, Map<String, ConsensusMessage> justification) {
+    public PrePrepareMessage(String block, Map<String, ConsensusMessage> justification) {
         this.block = block;
-        this.leaderSignature = "TODO: tirar";
         this.justification = justification;
     }
 
     public String getBlock() { return block; }
 
-    public Map<String, ConsensusMessage> getJustification() {
-        return justification;
-    }
+    public Map<String, ConsensusMessage> getJustification() { return justification; }
 
     public void setBlock(String block) { this.block = block; }
 
-    public String getLeaderSignature() {
-        return leaderSignature;
-    }
-
-    public void setLeaderSignature(String leaderSignature) {
-        this.leaderSignature = leaderSignature;
-    }
-
-    public String toJson() {
-        return new Gson().toJson(this);
-    }
+    public String toJson() { return new Gson().toJson(this); }
 }

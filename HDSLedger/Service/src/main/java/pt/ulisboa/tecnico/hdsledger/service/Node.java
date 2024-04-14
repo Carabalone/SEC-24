@@ -56,11 +56,11 @@ public class Node {
             BlockPool blockPool = new BlockPool(blockSize);
 
             // Services that implement listen from UDPService
-            NodeService nodeService = new NodeService(linkToNodes, linkToClients,
+            NodeService nodeService = new NodeService(linkToNodes,
                     nodeConfig, leaderConfig, nodeConfigs, clientConfigs,
                     blockPool);
 
-            BlockchainService blockchainService = new BlockchainService(linkToNodes, linkToClients,
+            BlockchainService blockchainService = new BlockchainService(linkToClients,
                     nodeConfig, nodeConfigs, clientConfigs, nodeService,
                     blockPool);
 

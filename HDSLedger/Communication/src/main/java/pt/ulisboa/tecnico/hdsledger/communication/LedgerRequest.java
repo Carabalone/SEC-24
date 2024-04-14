@@ -14,15 +14,12 @@ public class LedgerRequest extends Message {
 
     private int requestId;
 
+
     public LedgerRequest(String senderId, Type type, int requestId, String request, String signature) {
         super(senderId, type);
         this.requestId = requestId;
         this.request = request;
         this.clientSignature = signature;
-    }
-
-    public LedgerRequestAppend deserializeAppend() {
-        return new Gson().fromJson(request, LedgerRequestAppend.class);
     }
 
     public LedgerRequestBalance deserializeBalance() { return new Gson().fromJson(request, LedgerRequestBalance.class); }

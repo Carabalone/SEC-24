@@ -67,12 +67,12 @@ public class RoundChangeMessage {
         this.preparedBlock = preparedBlock;
     }
 
-    public String toJson() {
-        return new Gson().toJson(this);
-    }
-
     public Map<String, ConsensusMessage> getJustification() {
         return justification;
+    }
+
+    public String toJson() {
+        return new Gson().toJson(this);
     }
 
     @Override

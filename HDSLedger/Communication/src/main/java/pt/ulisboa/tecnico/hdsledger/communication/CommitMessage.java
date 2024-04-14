@@ -6,6 +6,7 @@ import com.google.gson.Gson;
 public class CommitMessage {
 
     private String block;
+
     private String signature;
 
     public CommitMessage(String block, String signature) {

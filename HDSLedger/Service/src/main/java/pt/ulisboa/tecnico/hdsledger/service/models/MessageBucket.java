@@ -19,6 +19,7 @@ public class MessageBucket {
     // Instance -> Round -> Sender ID -> Consensus message
     private final Map<Integer, Map<Integer, Map<String, ConsensusMessage>>> bucket = new ConcurrentHashMap<>();
 
+
     public MessageBucket(int nodeCount) {
         int f = Math.floorDiv(nodeCount - 1, 3);
         quorumSize = Math.floorDiv(nodeCount + f, 2) + 1;

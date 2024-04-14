@@ -11,9 +11,9 @@ public class PrepareMessage {
 
     private String leaderSignature;
 
-    public PrepareMessage(String block/*, String leaderSignature*/) {
+
+    public PrepareMessage(String block) {
         this.block = block;
-        this.leaderSignature = "TODO: tirar";
     }
 
     public String getBlock() {
@@ -21,21 +21,6 @@ public class PrepareMessage {
     }
 
     public void setBlock(String block) { this.block = block; }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        PrepareMessage that = (PrepareMessage) o;
-        System.out.println("block> " + Objects.equals(block, that.block));
-        System.out.println("signature> " + Objects.equals(leaderSignature, that.leaderSignature));
-        return Objects.equals(block, that.block) && Objects.equals(leaderSignature, that.leaderSignature);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(block, leaderSignature);
-    }
 
     public String getLeaderSignature() {
         return leaderSignature;
@@ -45,7 +30,18 @@ public class PrepareMessage {
         this.leaderSignature = leaderSignature;
     }
 
-    public String toJson() {
-        return new Gson().toJson(this);
+    public String toJson() {return new Gson().toJson(this); }
+
+    @Override
+    public int hashCode() {return Objects.hash(block, leaderSignature);}
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        PrepareMessage that = (PrepareMessage) o;
+        System.out.println("block> " + Objects.equals(block, that.block));
+        System.out.println("signature> " + Objects.equals(leaderSignature, that.leaderSignature));
+        return Objects.equals(block, that.block) && Objects.equals(leaderSignature, that.leaderSignature);
     }
 }

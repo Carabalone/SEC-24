@@ -7,6 +7,7 @@ public class SignedMessage implements Serializable {
 
     // Message content
     private String message;
+
     // Message signature
     private String signature;
 

@@ -20,8 +20,6 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
     // Nodes configurations
     private final ProcessConfig[] nodesConfig;
 
-    private final ProcessConfig[] clientsConfig;
-
     // Current node is leader
     private final ProcessConfig config;
 
@@ -30,8 +28,6 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
     // Link to communicate with nodes
     private final Link nodesLink;
-
-    private final Link clientsLink;
 
     // Consensus instance -> Round -> List of prepare messages
     private final MessageBucket prepareMessages;
@@ -57,8 +53,6 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
     private BlockchainService blockchainService;
 
-    private Block lastCommitedBlock = new Block();
-
     // consensusInstance -> timer
     private final Map<Integer, HDSTimer> timers = new ConcurrentHashMap<>();
 
@@ -74,20 +68,18 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
     private final int quorumSize;
 
-    public NodeService(Link nodesLink, Link clientsLink,
+
+    public NodeService(Link nodesLink,
                        ProcessConfig config, ProcessConfig leaderConfig, ProcessConfig[] nodesConfig, ProcessConfig[] clientsConfig,
                        BlockPool blockPool) {
 
         this.nodesLink = nodesLink;
-        this.clientsLink = clientsLink;
-        this.config = config;
 
+        this.config = config;
         this.leaderConfig = config.hasFailureType(ProcessConfig.FailureType.DICTATOR_LEADER) ?
                 config :
                 leaderConfig;
-
         this.nodesConfig = nodesConfig;
-        this.clientsConfig = clientsConfig;
 
         this.blockPool = blockPool;
 
@@ -105,9 +97,10 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         quorumSize = 2 * maxFaults() + 1;
     }
 
-    @Override
-    public void onTimerExpired() { uponTimerExpire(); }
 
+    /** ****************************************************** */
+    /** ***************** GETTERS AND SETTERS **************** */
+    /** ****************************************************** */
     public ProcessConfig getConfig() { return this.config; }
 
     public int getConsensusInstance() { return this.consensusInstance.get(); }
@@ -118,25 +111,14 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
     private boolean isLeader(String id) { return this.leaderConfig.getId().equals(id); }
 
-    public BlockchainService getBlockchainService() { return this.blockchainService; }
-
     public void setBlockchainService(BlockchainService blockchainService) { this.blockchainService = blockchainService; }
-
-    public void setFeeToBlockProducer(long feeToBlockProducer) { this.feeToBlockProducer = feeToBlockProducer; }
 
     public long getFeeToBlockProducer() { return this.feeToBlockProducer; }
 
-    public ConsensusMessage createConsensusMessage(Block block, int instance, int round) {
-        PrePrepareMessage prePrepareMessage = new PrePrepareMessage(Block.getBlockJson(block));
 
-        ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PRE_PREPARE)
-                .setConsensusInstance(instance)
-                .setRound(round)
-                .setMessage(prePrepareMessage.toJson())
-                .build();
-
-        return consensusMessage;
-    }
+    /** ************************************* */
+    /** ********** IBFT CONSENSUS *********** */
+    /** ************************************* */
 
     /*
      * Start an instance of consensus for a value
@@ -147,10 +129,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
      */
     public void startConsensus(Block block) {
         if (config.getFailureType() == ProcessConfig.FailureType.CRASH) {
-            LOGGER.log(
-                    Level.INFO,
-                    MessageFormat.format("{0} Leader has failure and will not start consensus", config.getId())
-            );
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format("{0} Leader has failure and will not start consensus", config.getId()));
             return;
         }
 
@@ -188,8 +168,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
             InstanceInfo instance = this.instanceInfo.get(localConsensusInstance);
 
-            LOGGER.log(Level.INFO,
-                MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
+            LOGGER.log(Level.INFO, MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
             block = config.hasFailureType(ProcessConfig.FailureType.LEADER_SPOOFING) ?
                     new Block("@@H4ck3d@@") :
                     block;
@@ -198,24 +177,12 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         }
 
         else {
-            LOGGER.log(Level.INFO,
-                    MessageFormat.format("{0} - Node is not leader, waiting for PRE-PREPARE message", config.getId()));
+            LOGGER.log(Level.INFO, MessageFormat.format("{0} - Node is not leader, waiting for PRE-PREPARE message", config.getId()));
         }
 
         startOrRestartTimer(localConsensusInstance, 1);
     }
 
-    private void startOrRestartTimer(int instance, int round) {
-        synchronized (timers) {
-            HDSTimer timer = timers.get(instance);
-            if (timer == null) {
-                timer = new HDSTimer();
-                timers.put(instance, timer);
-            }
-            timer.subscribe(config.getId(), this);
-            timer.startOrRestart(round);
-        }
-    }
 
     /*
      * Handle pre prepare messages and if the message
@@ -233,15 +200,13 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
         Block block = Block.fromJson(prePrepareMessage.getBlock());
 
-        LOGGER.log(Level.INFO,
-                MessageFormat.format(
+        LOGGER.log(Level.INFO, MessageFormat.format(
                         "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3}, Value {4}",
                         config.getId(), senderId, consensusInstance, round, block));
 
         // Verify if pre-prepare was sent by leader
         if (!isLeader(senderId)) {
-            LOGGER.log(Level.INFO,
-                    MessageFormat.format(
+            LOGGER.log(Level.INFO, MessageFormat.format(
                             "{0} - Received PRE-PREPARE message from {1} but not leader, ignoring",
                             config.getId(), senderId));
             return;
@@ -252,19 +217,14 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
         // ignore messages from previous rounds
         if (message.getRound() < instanceInfo.get(consensusInstance).getCurrentRound()) {
-            LOGGER.log(Level.INFO,
-                    MessageFormat.format(
+            LOGGER.log(Level.INFO, MessageFormat.format(
                             "[PRE-PREPARE] Received Round {0} but round is lower than current round {1}",
                             round, instanceInfo.get(consensusInstance).getCurrentRound()));
             return;
         }
 
         if (!justifyPrePrepare(message)) {
-            LOGGER.log(
-                    Level.INFO,
-                    MessageFormat.format(
-                            "{0} - Pre-prepare message not justified, ignoring",
-                            config.getId())
+            LOGGER.log(Level.INFO, MessageFormat.format("{0} - Pre-prepare message not justified, ignoring", config.getId())
             );
 
             return;
@@ -274,8 +234,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         // for any round r
         receivedPrePrepare.putIfAbsent(consensusInstance, new ConcurrentHashMap<>());
         if (receivedPrePrepare.get(consensusInstance).put(round, true) != null) {
-            LOGGER.log(Level.INFO,
-                    MessageFormat.format(
+            LOGGER.log(Level.INFO, MessageFormat.format(
                             "{0} - Already received PRE-PREPARE message for Consensus Instance {1}, Round {2}, "
                                     + "replying again to make sure it reaches the initial sender",
                             config.getId(), consensusInstance, round));
@@ -316,9 +275,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
         Block block = Block.fromJson(prepareMessage.getBlock());
 
-        LOGGER.log(Level.INFO,
-                MessageFormat.format(
-                        "{0} - Received PREPARE message from {1}: Consensus Instance {2}, Round {3}",
+        LOGGER.log(Level.INFO, MessageFormat.format(
+                "{0} - Received PREPARE message from {1}: Consensus Instance {2}, Round {3}",
                         config.getId(), senderId, consensusInstance, round));
 
         // Doesn't add duplicate messages
@@ -327,15 +285,12 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         if (config.getFailureType() == ProcessConfig.FailureType.MESSAGE_DELAY && messageDelayCounter < 2) {
             messageDelayCounter++;
 
-            LOGGER.log(Level.INFO,
-                    MessageFormat.format(
-                            "{0} - Sleeping because MESSAGE_DELAY failure",
-                            config.getId()));
+            LOGGER.log(Level.INFO, MessageFormat.format("{0} - Sleeping because MESSAGE_DELAY failure", config.getId()));
 
             try {
                 Thread.sleep(5500); // making sure that the timer runs out
             } catch (Exception e) {
-               e.printStackTrace();
+                e.printStackTrace();
             }
         }
 
@@ -345,9 +300,8 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
         // ignore messages from previous rounds
         if (message.getRound() < instance.getCurrentRound()) {
-            LOGGER.log(Level.INFO,
-                    MessageFormat.format(
-                            "[PREPARE] Received Round {0} but round is lower than current round {1}",
+            LOGGER.log(Level.INFO, MessageFormat.format(
+                    "[PREPARE] Received Round {0} but round is lower than current round {1}",
                             round, instance.getCurrentRound()));
             return;
         }
@@ -357,8 +311,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         // Late prepare (consensus already ended for other nodes) only reply to him (as
         // an ACK)
         if (instance.getPreparedRound() >= round) {
-            LOGGER.log(Level.INFO,
-                    MessageFormat.format(
+            LOGGER.log(Level.INFO, MessageFormat.format(
                             "{0} - Already received PREPARE message for Consensus Instance {1}, Round {2}, "
                                     + "replying again to make sure it reaches the initial sender",
                             config.getId(), consensusInstance, round));
@@ -390,7 +343,6 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
             try {
                 Signature sig = new Signature(preparedBlock.get(), ledger.getAccountBalances());
                 String signedSignature = DigitalSignature.sign(sig.toJson(), config.getPrivateKeyPath());
-                String signedBlock = DigitalSignature.sign(Block.getBlockJson(preparedBlock.get()), config.getPrivateKeyPath());
                 CommitMessage c = new CommitMessage(Block.getBlockJson(preparedBlock.get()), signedSignature);
                 instance.setCommitMessage(c);
                 ledger.addSignature(consensusInstance, config.getId(), signedSignature);
@@ -425,14 +377,12 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         int consensusInstance = message.getConsensusInstance();
         int round = message.getRound();
 
-        LOGGER.log(Level.INFO,
-                MessageFormat.format("{0} - Received COMMIT message from {1}: Consensus Instance {2}, Round {3}",
+        LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received COMMIT message from {1}: Consensus Instance {2}, Round {3}",
                         config.getId(), message.getSenderId(), consensusInstance, round));
 
         // ignore messages from previous rounds
         if (message.getRound() < instanceInfo.get(this.consensusInstance.get()).getCurrentRound()) {
-            LOGGER.log(Level.INFO,
-                    MessageFormat.format(
+            LOGGER.log(Level.INFO, MessageFormat.format(
                             "[COMMIT] Received Round {0} but round is lower than current round {1}",
                             round, instanceInfo.get(this.consensusInstance.get()).getCurrentRound()));
             return;
@@ -461,8 +411,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         // Within an instance of the algorithm, each upon rule is triggered at most once
         // for any round r
         if (instance.getCommittedRound() >= round) {
-            LOGGER.log(Level.INFO,
-                    MessageFormat.format(
+            LOGGER.log(Level.INFO, MessageFormat.format(
                             "{0} - Already received COMMIT message for Consensus Instance {1}, Round {2}, ignoring",
                             config.getId(), consensusInstance, round));
             return;
@@ -501,11 +450,6 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                         });
 
                 ledger.addBlockAt(consensusInstance - 1, commitValue.get());
-
-/*                LOGGER.log(Level.INFO,
-                    MessageFormat.format(
-                            "{0} - Current Ledger: {1}",
-                            config.getId(), String.join("", ledger)));*/
             }
 
             lastDecidedConsensusInstance.getAndIncrement();
@@ -534,103 +478,100 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 }
             }
 
-
-            //else if (ledgerRequest.getType() == Message.Type.BALANCE) checkBalance(ledgerRequest.deserializeBalance());
-
-
             this.blockchainService.setConsensusReached(true);
 
-            LOGGER.log(Level.INFO,
-                    MessageFormat.format(
+            LOGGER.log(Level.INFO, MessageFormat.format(
                             "{0} - Decided on Consensus Instance {1}, Round {2}, Successful? {3}",
                             config.getId(), consensusInstance, round, true));
         }
     }
 
-    public void transfer(LedgerRequestTransfer ledgerRequest) {
-        System.out.printf("SENDER ID: %s\n", ledgerRequest.getSenderId());
+    /** ****************************************************** */
+    /** ********** IBFT CONSENSUS HELPER FUNCTIONS *********** */
+    /** ****************************************************** */
 
-        Optional<Account> sourceAccountOpt = ledger.getAccount(ledgerRequest.getSenderId());
-        Optional<Account> destinationAccountOpt = ledger.getAccount(ledgerRequest.getDestinationId());
+    public ConsensusMessage createConsensusMessage(Block block, int instance, int round) {
+        PrePrepareMessage prePrepareMessage = new PrePrepareMessage(Block.getBlockJson(block));
 
-        sourceAccountOpt.ifPresentOrElse(sourceAccount -> {
-            destinationAccountOpt.ifPresentOrElse(destinationAccount -> {
+        ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PRE_PREPARE)
+                .setConsensusInstance(instance)
+                .setRound(round)
+                .setMessage(prePrepareMessage.toJson())
+                .build();
 
-                long amount = ledgerRequest.getAmount();
-                long sourceBalance = sourceAccount.getBalance();
-
-                if (amount <= 0) throw new HDSSException(ErrorMessage.CannotTransferNegativeAmount);
-                if (sourceAccount.getId().equals(destinationAccount.getId())) throw new HDSSException(ErrorMessage.CannotTransferToSelf);
-                if (sourceBalance < amount + feeToBlockProducer) throw new HDSSException(ErrorMessage.InsufficientFunds);
-                if (sourceAccount.getType() != Account.Type.CLIENT || destinationAccount.getType() != Account.Type.CLIENT)
-                    throw new HDSSException(ErrorMessage.CannotTransferToNode);
-
-                destinationAccount.addBalance(amount);
-                sourceAccount.subtractBalance(amount + feeToBlockProducer);
-
-                // Pay fee to block producer
-                if (isLeader(this.config.getId())) {
-                    Optional<Account> leaderAccountOpt = ledger.getAccount(this.config.getId());
-
-                    leaderAccountOpt.ifPresentOrElse(leaderAccount -> {
-                         leaderAccount.addBalance(feeToBlockProducer);
-
-                         LOGGER.log(Level.INFO,
-                            MessageFormat.format(
-                                "{0} - Transfer from client {1} to client {2} of amount {3} with fee {4} successful, new leader balance: {5}",
-                                config.getId(), sourceAccount.getId(), destinationAccount.getId(), amount, feeToBlockProducer, leaderAccount.getBalance()));
-
-                        System.out.printf("Source client balance: %d\n", sourceAccount.getBalance());
-                        System.out.printf("Destination client balance: %d\n", destinationAccount.getBalance());
-
-                    }, () -> { throw new HDSSException(ErrorMessage.CannotFindAccount); });
-                }
-            }, () -> { throw new HDSSException(ErrorMessage.CannotFindAccount); });
-        }, () -> { throw new HDSSException(ErrorMessage.CannotFindAccount); });
+        return consensusMessage;
     }
+
+    private void timerStatus() {
+        if (!started) {
+            started = true;
+            try {
+                new Thread(() -> {
+                    while (true) {
+                        if (timers.get(consensusInstance.get()) == null) continue;
+                        System.err.println("REPORTING TIMER STATUS: " + timers.get(consensusInstance.get()).getState());
+                        try {
+                            Thread.sleep(5 * 1000);
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }).start();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void startOrRestartTimer(int instance, int round) {
+        synchronized (timers) {
+            HDSTimer timer = timers.get(instance);
+            if (timer == null) {
+                timer = new HDSTimer();
+                timers.put(instance, timer);
+            }
+            timer.subscribe(config.getId(), this);
+            timer.startOrRestart(round);
+        }
+    }
+
+    @Override
+    public void onTimerExpired() { uponTimerExpire(); }
 
     public void uponTimerExpire() {
         int localInstance = consensusInstance.get();
 
         InstanceInfo existingConsensus = this.instanceInfo.get(localInstance);
 
-        LOGGER.log(Level.INFO,
-                MessageFormat.format("[TIMER] Timer expired for Consensus Instance {0}, Round {1}",
+        LOGGER.log(Level.INFO, MessageFormat.format("[TIMER] Timer expired for Consensus Instance {0}, Round {1}",
                         localInstance, existingConsensus.getCurrentRound()));
 
         // ri ← ri + 1
         existingConsensus.setCurrentRound(existingConsensus.getCurrentRound() + 1);
-        LOGGER.log(Level.INFO, MessageFormat.format(
-                "{0} - Changed round to {1}", config.getId(), existingConsensus.getCurrentRound()
-        ));
+        LOGGER.log(Level.INFO, MessageFormat.format("{0} - Changed round to {1}", config.getId(), existingConsensus.getCurrentRound()));
 
         // will change the round but does not want the leader to change, so will not broadcast round change.
         if (config.hasFailureType(ProcessConfig.FailureType.DICTATOR_LEADER)) {
-            LOGGER.log(Level.INFO,
-                    "[DICTATOR LEADER] Updated my round but will not broadcast round change or change leader");
+            LOGGER.log(Level.INFO, "[DICTATOR LEADER] Updated my round but will not broadcast round change or change leader");
             return;
         }
 
         updateLeader();
 
         int round = existingConsensus.getCurrentRound();
-        LOGGER.log(Level.WARNING,
-                MessageFormat.format("local Instance in Timer {0}", localInstance));
+        LOGGER.log(Level.WARNING, MessageFormat.format("local Instance in Timer {0}", localInstance));
 
-        LOGGER.log(Level.INFO,
-                "[TIMER] - Started Timer in uponTimerExpire");
+        LOGGER.log(Level.INFO, "[TIMER] - Started Timer in uponTimerExpire");
         startOrRestartTimer(localInstance, round);
 
-        boolean hasValidQuorum = prepareMessages
-                .hasValidRoundChangeQuorum(config.getId(), localInstance, existingConsensus.getPreparedRound());
+        boolean hasValidQuorum = prepareMessages.hasValidRoundChangeQuorum(config.getId(), localInstance, existingConsensus.getPreparedRound());
 
-        Map<String, ConsensusMessage> quorum = prepareMessages
-                .getMessages(localInstance, existingConsensus.getPreparedRound());
+        Map<String, ConsensusMessage> quorum = prepareMessages.getMessages(localInstance, existingConsensus.getPreparedRound());
 
         RoundChangeMessage roundChangeMessage = new RoundChangeMessage(localInstance, round,
-                                                existingConsensus.getPreparedRound(),
-                                                Block.getBlockJson(existingConsensus.getPreparedBlock()),
-                                                quorum);
+                existingConsensus.getPreparedRound(),
+                Block.getBlockJson(existingConsensus.getPreparedBlock()),
+                quorum);
 
         existingConsensus.setRoundChangeMessage(roundChangeMessage);
 
@@ -641,14 +582,30 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 .setReplyTo(config.getId())
                 .build();
 
-        LOGGER.log(Level.INFO,
-                MessageFormat.format("{0} - Broadcasting ROUND CHANGE message to round {1}",
-                        config.getId(), round));
+        LOGGER.log(Level.INFO, MessageFormat.format("{0} - Broadcasting ROUND CHANGE message to round {1}", config.getId(), round));
         nodesLink.broadcast(consensusMessage);
     }
 
-    public int maxFaults() { return (nodesConfig.length - 1) / 3; }
+    public int leaderByIndex(int round) { return (round - 1) % nodesConfig.length; }
 
+    // this does not change round, it just changes the leader according to the round in the node state
+    private void updateLeader() {
+        if (config.hasFailureType(ProcessConfig.FailureType.DICTATOR_LEADER)) {
+            LOGGER.log(Level.INFO, "I am Dictator Leader. supposed to change leader but I am staying as leader");
+            return;
+        }
+        int round = instanceInfo.get(consensusInstance.get()).getCurrentRound();
+        int nextLeaderIndex = leaderByIndex(round);
+
+        LOGGER.log(Level.INFO, MessageFormat.format(
+                "[RC] Changing Leader from {0} to {1}", leaderConfig.getId(), nodesConfig[nextLeaderIndex].getId()));
+
+        leaderConfig = nodesConfig[nextLeaderIndex];
+    }
+
+    /** ****************************************************** */
+    /** *************** IBFT ROUND CHANGE ******************* */
+    /** ****************************************************** */
     private void uponRoundChangeSet(ConsensusMessage message) {
         int consensusInstance = message.getConsensusInstance();
         int round = message.getRound();
@@ -666,11 +623,9 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         LOGGER.log(Level.INFO, MessageFormat.format("Received {0}/{1} messages", messages.size(), maxFaults() + 1));
         if (messages.size() == maxFaults() + 1) {
 
-            LOGGER.log(Level.INFO,
-                    ("[RC] Entered first round Change predicate."));
+            LOGGER.log(Level.INFO, ("[RC] Entered first round Change predicate."));
 
-            Optional<ConsensusMessage> selected = messages.stream()
-                    .min(Comparator.comparingInt(ConsensusMessage::getRound));
+            Optional<ConsensusMessage> selected = messages.stream().min(Comparator.comparingInt(ConsensusMessage::getRound));
 
             if (selected.isPresent()) {
                 //  ri ← rmin
@@ -679,9 +634,7 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
                 instance.setCurrentRound(selected.get().getRound());
 
-                LOGGER.log(Level.INFO, MessageFormat.format(
-                        "[RC] Got MIN round rj > ri: {0}", instance.getCurrentRound()
-                ));
+                LOGGER.log(Level.INFO, MessageFormat.format("[RC] Got MIN round rj > ri: {0}", instance.getCurrentRound()));
 
                 updateLeader();
 
@@ -715,22 +668,13 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         boolean existsRoundChangeQuorum = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
 
         if (existsRoundChangeQuorum) {
-            LOGGER.log(
-                    Level.INFO,
-                    "[RC] Entered second predicate."
-            );
+            LOGGER.log(Level.INFO, "[RC] Entered second predicate.");
             Collection<ConsensusMessage> quorum = roundChangeMessages.getMessages(consensusInstance, round).values();
 
-            LOGGER.log(Level.SEVERE,
-                    MessageFormat.format(
-                            "[RC] There exists a RC quorum on round {0}", round
-                    ));
-
+            LOGGER.log(Level.SEVERE, MessageFormat.format("[RC] There exists a RC quorum on round {0}", round));
 
             if (isLeader(config.getId()) && justifyRoundChange(quorum)) {
-                LOGGER.log(Level.INFO,
-                        "[RC] Entered second predicate (There is a quorum) and I'm leader"
-                );
+                LOGGER.log(Level.INFO, "[RC] Entered second predicate (There is a quorum) and I'm leader");
 
                 Block block;
 
@@ -749,53 +693,35 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                         .setMessage(prePrepareMessage.toJson())
                         .build();
 
-                //startOrRestartTimer(consensusInstance, round);
-
                 this.nodesLink.broadcast(consensusMessage);
             }
 
             else {
                 if (isLeader(config.getId())) {
-                    LOGGER.log(Level.INFO,
-                            "[RC] I'm leader but not justifying round change");
+                    LOGGER.log(Level.INFO, "[RC] I'm leader but not justifying round change");
+                    LOGGER.log(Level.INFO, "[RC] lets see what messages we got in the quorum...");
 
-                    LOGGER.log(Level.INFO,
-                            "[RC] lets see what messages we got in the quorum..."
-                    );
                     Collection<ConsensusMessage> q = roundChangeMessages.getMessages(consensusInstance, round).values();
 
-                    for (ConsensusMessage m : q) {
-                        LOGGER.log(Level.INFO,
-                                MessageFormat.format("[RC] Quorum message: {0}", m.getMessage())
-                        );
-                    }
+                    for (ConsensusMessage m : q)
+                        LOGGER.log(Level.INFO, MessageFormat.format("[RC] Quorum message: {0}", m.getMessage()));
                     return;
                 }
-                LOGGER.log(Level.INFO,
-                        "[RC] not leader thus not doing anything"
-                );
+                LOGGER.log(Level.INFO, "[RC] not leader thus not doing anything");
             }
         }
 
         else {
+            LOGGER.log(Level.INFO, "[RC] Entered second predicate (There is no quorum).");
             LOGGER.log(Level.INFO,
-                    "[RC] Entered second predicate (There is no quorum)."
-            );
-            LOGGER.log(Level.INFO,
-                "[RC] there are " + roundChangeMessages.getMessages(consensusInstance, round).values().size() + " messages in the bucket."
-            );
+                    "[RC] there are " + roundChangeMessages.getMessages(consensusInstance, round).values().size() + " messages in the bucket.");
 
             if (isLeader(config.getId())) {
-                LOGGER.log(Level.INFO,
-                        "[RC] lets see what messages we got in the quorum..."
-                );
+                LOGGER.log(Level.INFO, "[RC] lets see what messages we got in the quorum...");
                 Collection<ConsensusMessage> quorum = roundChangeMessages.getMessages(consensusInstance, round).values();
 
-                for (ConsensusMessage m : quorum) {
-                    LOGGER.log(Level.INFO,
-                            MessageFormat.format("[RC] Quorum message: {0}", m.getMessage())
-                    );
-                }
+                for (ConsensusMessage m : quorum)
+                    LOGGER.log(Level.INFO, MessageFormat.format("[RC] Quorum message: {0}", m.getMessage()));
             }
         }
     }
@@ -812,6 +738,10 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
         uponRoundChangeQuorum(message);
     }
 
+
+    /** ****************************************************** */
+    /** *********** IBFT CONSENSUS JUSTIFICATIONS ************ */
+    /** ****************************************************** */
     // assumes the quorum exists and receives it
     private boolean justifyRoundChange(Collection<ConsensusMessage> quorum) {
         // overview
@@ -851,10 +781,10 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
 
         boolean highestPreparedPredicate = quorum.stream()
                 .filter(m ->
-                    m.deserializeRoundChangeMessage().getJustification().entrySet().stream()
-                            .filter(entry -> entry.getValue().getRound() == highestPreparedRound &&
-                                    entry.getValue().deserializePrepareMessage().getBlock().equals(Block.getBlockJson(highestPreparedBlock)))
-                            .count() >= quorumSize
+                        m.deserializeRoundChangeMessage().getJustification().entrySet().stream()
+                                .filter(entry -> entry.getValue().getRound() == highestPreparedRound &&
+                                        entry.getValue().deserializePrepareMessage().getBlock().equals(Block.getBlockJson(highestPreparedBlock)))
+                                .count() >= quorumSize
                 )
                 .count() >= quorumSize;
 
@@ -911,18 +841,10 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                     )
                     .count() >= quorumSize;
 
-            System.out.println("highestPeparedPredicate: " + highestPreparedPredicate);
-
             return highestPreparedPredicate || nullPredicate;
         }
         return false;
     }
-
-    private long getTimespanMillis(int round) { return (long) (1000 * Math.pow(2, round)); }
-
-    public int leaderByIndex(int round) { return (round - 1) % nodesConfig.length; }
-
-    public String leader(int round) { return nodesConfig[leaderByIndex(round)].getId(); }
 
     public Optional<Pair<Integer, String>> highestPrepared(Collection<ConsensusMessage> quorum) {
         return quorum.stream()
@@ -933,45 +855,56 @@ public class NodeService implements UDPService, HDSTimer.TimerListener {
                 .stream().findAny();
     }
 
-    // this does not change round, it just changes the leader according to the round in the node state
-    private void updateLeader() {
-        if (config.hasFailureType(ProcessConfig.FailureType.DICTATOR_LEADER)) {
-            LOGGER.log(Level.INFO, "I am Dictator Leader. supposed to change leader but I am staying as leader");
-            return;
-        }
-        int round = instanceInfo.get(consensusInstance.get()).getCurrentRound();
-        int nextLeaderIndex = leaderByIndex(round);
+    public int maxFaults() { return (nodesConfig.length - 1) / 3; }
 
-        LOGGER.log(Level.INFO, MessageFormat.format(
-                "[RC] Changing Leader from {0} to {1}", leaderConfig.getId(), nodesConfig[nextLeaderIndex].getId()));
 
-        leaderConfig = nodesConfig[nextLeaderIndex];
+    /** ****************************************************** */
+    /** **************** CONSENSUS OPERATIONS **************** */
+    /** ****************************************************** */
+    public void transfer(LedgerRequestTransfer ledgerRequest) {
+        Optional<Account> sourceAccountOpt = ledger.getAccount(ledgerRequest.getSenderId());
+        Optional<Account> destinationAccountOpt = ledger.getAccount(ledgerRequest.getDestinationId());
+
+        sourceAccountOpt.ifPresentOrElse(sourceAccount -> {
+            destinationAccountOpt.ifPresentOrElse(destinationAccount -> {
+
+                long amount = ledgerRequest.getAmount();
+                long sourceBalance = sourceAccount.getBalance();
+
+                if (amount <= 0) throw new HDSSException(ErrorMessage.CannotTransferNegativeAmount);
+                if (sourceAccount.getId().equals(destinationAccount.getId())) throw new HDSSException(ErrorMessage.CannotTransferToSelf);
+                if (sourceBalance < amount + feeToBlockProducer) throw new HDSSException(ErrorMessage.InsufficientFunds);
+                if (sourceAccount.getType() != Account.Type.CLIENT || destinationAccount.getType() != Account.Type.CLIENT)
+                    throw new HDSSException(ErrorMessage.CannotTransferToNode);
+
+                destinationAccount.addBalance(amount);
+                sourceAccount.subtractBalance(amount + feeToBlockProducer);
+
+                // Pay fee to block producer
+                if (isLeader(this.config.getId())) {
+                    Optional<Account> leaderAccountOpt = ledger.getAccount(this.config.getId());
+
+                    leaderAccountOpt.ifPresentOrElse(leaderAccount -> {
+                         leaderAccount.addBalance(feeToBlockProducer);
+
+                         LOGGER.log(Level.INFO,
+                            MessageFormat.format(
+                                "{0} - Transfer from client {1} to client {2} of amount {3} with fee {4} successful, new leader balance: {5}",
+                                config.getId(), sourceAccount.getId(), destinationAccount.getId(), amount, feeToBlockProducer, leaderAccount.getBalance()));
+
+                        System.out.printf("Source client balance: %d\n", sourceAccount.getBalance());
+                        System.out.printf("Destination client balance: %d\n", destinationAccount.getBalance());
+
+                    }, () -> { throw new HDSSException(ErrorMessage.CannotFindAccount); });
+                }
+            }, () -> { throw new HDSSException(ErrorMessage.CannotFindAccount); });
+        }, () -> { throw new HDSSException(ErrorMessage.CannotFindAccount); });
     }
 
-    private void testTimer() {
-        if (!started) {
-            started = true;
-            try {
-                new Thread(() -> {
-                    while (true) {
-                        if (timers.get(consensusInstance.get()) == null) continue;
-                        System.out.println("Timer is: " + timers.get(consensusInstance.get()).getState());
-                        try {
-                            Thread.sleep(5 * 1000);
-                        } catch (InterruptedException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-                }).start();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }
 
     @Override
     public void listen() {
-        testTimer();
+        timerStatus();
         ProcessConfig.FailureType failureType = config.getFailureType();
         LOGGER.log(Level.INFO, MessageFormat.format("{0} Failure:  {1}", config.getId(), failureType));
 

@@ -7,13 +7,17 @@ public class LedgerRequestTransfer extends Message {
 
     private long amount;
 
-    private String signature;
+    private String amountSignature;
 
-    public LedgerRequestTransfer(Type type, String senderId, String destinationId, long amount, String signature) {
+    private String destinationIdSignature;
+
+
+    public LedgerRequestTransfer(Type type, String senderId, String destinationId, long amount, String amountSignature, String destinationIdSignature) {
         super(senderId, type);
         this.destinationId = destinationId;
         this.amount = amount;
-        this.signature = signature;
+        this.amountSignature = amountSignature;
+        this.destinationIdSignature = destinationIdSignature;
     }
 
     public String getDestinationId() { return destinationId; }
@@ -24,7 +28,11 @@ public class LedgerRequestTransfer extends Message {
 
     public void setAmount(long amount) { this.amount = amount; }
 
-    public String getSignature() { return signature; }
+    public String getAmountSignature() { return amountSignature; }
 
-    public void setSignature(String signature) { this.signature = signature; }
+    public void setAmountSignature(String amountSignature) { this.amountSignature = amountSignature; }
+
+    public String getDestinationIdSignature() { return destinationIdSignature; }
+
+    public void setDestinationIdSignature(String destinationIdSignature) { this.destinationIdSignature = destinationIdSignature; }
 }

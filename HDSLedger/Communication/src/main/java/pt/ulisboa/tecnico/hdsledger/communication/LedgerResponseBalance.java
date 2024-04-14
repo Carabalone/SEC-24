@@ -7,15 +7,12 @@ public class LedgerResponseBalance extends Message {
 
     private long balance;
 
-    private int lastConsensusInstance;
-
     private Map<String, String> signatures;
 
 
-    public LedgerResponseBalance(String senderId, long balance, int lastConsensusInstance, Map<String, String> signatures) {
+    public LedgerResponseBalance(String senderId, long balance, Map<String, String> signatures) {
         super(senderId, Type.REPLY);
         this.balance = balance;
-        this.lastConsensusInstance = lastConsensusInstance;
         this.signatures = signatures;
     }
 
@@ -26,5 +23,4 @@ public class LedgerResponseBalance extends Message {
     public Map<String, String> getSignatures() {
         return signatures;
     }
-
 }

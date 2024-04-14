@@ -37,14 +37,8 @@ public class Library {
 
     private AtomicInteger requestId = new AtomicInteger(0);
 
-    private List<String> blockchain = new ArrayList<>();
-
     private Map<String, Long> balanceCache = new ConcurrentHashMap<String, Long>();
 
-
-    public Library(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs, ProcessConfig[] clientConfigs) {
-        this(clientConfig, nodeConfigs, clientConfigs, true);
-    }
 
     public Library(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs, ProcessConfig[] clientConfigs, boolean activateLogs) throws HDSSException {
         this.config = clientConfig;
@@ -54,36 +48,11 @@ public class Library {
         Arrays.stream(nodeConfigs).forEach(c -> balanceCache.put(c.getId(), (long) c.getBalance()));
 
         // Create link to communicate with nodes
-        System.out.println("[LIBRARY] creating link");
+        System.out.println("[LIBRARY]: Creating link");
         this.link = new Link(clientConfig, clientConfig.getPort(), nodeConfigs, LedgerResponse.class,
                 activateLogs, 5000, true);
     }
 
-    private void addResponse(int requestId, Message response) {
-        synchronized (this.responses) {
-            List<Message> responses = this.responses.get(requestId);
-            if (responses == null) {
-                responses = new ArrayList<>();
-                this.responses.put(requestId, responses);
-            }
-            responses.add(response);
-        }
-    }
-
-    public Optional<PublicKey> getPublicKey(String accountId) {
-        Optional<ProcessConfig> accountConfig = findConfig(accountId);
-
-        if (accountConfig.isEmpty()) return Optional.empty();
-
-        PublicKey accountPubKey;
-        try {
-            accountPubKey = DigitalSignature.readPublicKey(accountConfig.get().getPublicKeyPath());
-        } catch (Exception e) {
-            throw new HDSSException(ErrorMessage.FailedToReadPublicKey);
-        }
-
-        return Optional.of(accountPubKey);
-    }
 
     public void checkBalance(String clientId, LedgerRequestBalance.Consistency consistency) {
         if (findConfig(clientId).isEmpty()) {
@@ -148,7 +117,7 @@ public class Library {
 
     public void transfer(int amount, String destinationId) {
         int clientRequestId = this.requestId.getAndIncrement();
-        String requestSignature, amountSignature;
+        String requestSignature, amountSignature, destinationIdSignature;
 
         if (findConfig(destinationId).isEmpty()) {
             System.out.println("Destination does not exist, not continuing operation");
@@ -159,6 +128,7 @@ public class Library {
             System.out.println("Cannot transfer to self");
             return;
         }
+
         else if (this.config.getFailureType() == ProcessConfig.FailureType.GREEDY_CLIENT) {
             destinationId.equals(this.config.getId());
             System.out.printf("[LIBRARY] Greedy client, transferring to self\n");
@@ -166,11 +136,13 @@ public class Library {
 
         try {
             amountSignature = DigitalSignature.sign(String.valueOf(amount), this.config.getPrivateKeyPath());
+            destinationIdSignature = DigitalSignature.sign(destinationId, this.config.getPrivateKeyPath());
         } catch (Exception e) {
             throw new HDSSException(ErrorMessage.UnableToSignMessage);
         }
 
-        LedgerRequestTransfer request = new LedgerRequestTransfer(Message.Type.TRANSFER, this.config.getId(), destinationId, amount, amountSignature);
+        LedgerRequestTransfer request = new LedgerRequestTransfer(Message.Type.TRANSFER, this.config.getId(),
+                destinationId, amount, amountSignature, destinationIdSignature);
         String serializedRequest = new Gson().toJson(request);
 
         try {
@@ -197,13 +169,40 @@ public class Library {
         System.out.printf("[LIBRARY] Destination Balance: %d\n", destinationBalance);
     }
 
-    Optional<ProcessConfig> findConfig(String id) {
+    private void addResponse(int requestId, Message response) {
+        synchronized (this.responses) {
+            List<Message> responses = this.responses.get(requestId);
+            if (responses == null) {
+                responses = new ArrayList<>();
+                this.responses.put(requestId, responses);
+            }
+            responses.add(response);
+        }
+    }
+
+    public Optional<PublicKey> getPublicKey(String accountId) {
+        Optional<ProcessConfig> accountConfig = findConfig(accountId);
+
+        if (accountConfig.isEmpty()) return Optional.empty();
+
+        PublicKey accountPubKey;
+        try {
+            accountPubKey = DigitalSignature.readPublicKey(accountConfig.get().getPublicKeyPath());
+        } catch (Exception e) {
+            throw new HDSSException(ErrorMessage.FailedToReadPublicKey);
+        }
+
+        return Optional.of(accountPubKey);
+    }
+
+    public Optional<ProcessConfig> findConfig(String id) {
         Optional<ProcessConfig> node = Arrays.stream(nodeConfigs).filter(config -> config.getId().equals(id)).findFirst();
         Optional<ProcessConfig> client = Arrays.stream(clientConfigs).filter(config -> config.getId().equals(id)).findFirst();
 
         return node.isPresent() ? node : client;
     }
-    Optional<ProcessConfig> findNodeConfig(String nodeId) {
+
+    public Optional<ProcessConfig> findNodeConfig(String nodeId) {
         return Arrays.stream(nodeConfigs).filter(config -> config.getId().equals(nodeId)).findFirst();
     }
 
@@ -225,7 +224,6 @@ public class Library {
                                     findNodeConfig(entry.getKey()).get().getPublicKeyPath()
                             )
                     );
-                    System.out.println("Digest for node " + findNodeConfig(entry.getKey()).get() + " : " + digest);
                     return digest;
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -242,11 +240,7 @@ public class Library {
         }
     }
 
-    private int maxFaults() {
-        // we need 3f + 1 nodes to tolerate f faults
-        // so n = 3f+1, f = (n-1)/3
-        return (nodeConfigs.length - 1) / 3;
-    }
+    private int maxFaults() { return (nodeConfigs.length - 1) / 3; }
 
     public void waitForMinSetOfResponses(int requestId) {
         while (!responses.containsKey(requestId) ||
@@ -278,8 +272,7 @@ public class Library {
                         Message message = link.receive();
 
                         switch (message.getType()) {
-                            case ACK ->
-                                LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received ACK {1} message from {2}",
+                            case ACK -> LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received ACK {1} message from {2}",
                                         config.getId(), message.getMessageId(), message.getSenderId()));
 
                             case REPLY -> {
@@ -298,7 +291,6 @@ public class Library {
                                 LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received unknown {1} message from {2}",
                                         config.getId(), message.getType(), message.getSenderId()));
                                 LOGGER.log(Level.INFO, MessageFormat.format("{0} Continuing as normal...", config.getId()));
-
                             }
                         }
                     }

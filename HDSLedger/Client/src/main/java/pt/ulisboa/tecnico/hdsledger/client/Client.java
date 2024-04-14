@@ -10,6 +10,7 @@ import java.util.Scanner;
 
 
 public class Client {
+
     private static final String nodePath = "../Service/src/main/resources/";
 
     private static final String clientPath = "src/main/resources/";

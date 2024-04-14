@@ -51,6 +51,19 @@ public class Block {
         return consensusInstance;
     }
 
+    public void setConsensusInstance(int consensusInstance) {
+        this.consensusInstance = consensusInstance;
+    }
+
+    public static String getBlockJson(Block block) {
+        if (block == null) return null;
+        else return block.toJson();
+    }
+
+    public String toJson() { return new Gson().toJson(this); }
+
+    public static Block fromJson(String json) { return new Gson().fromJson(json, Block.class); }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -71,17 +84,4 @@ public class Block {
                 ", requests=" + requests +
                 '}';
     }
-
-    public void setConsensusInstance(int consensusInstance) {
-        this.consensusInstance = consensusInstance;
-    }
-
-    public static String getBlockJson(Block block) {
-        if (block == null) return null;
-        else return block.toJson();
-    }
-
-    public String toJson() { return new Gson().toJson(this); }
-
-    public static Block fromJson(String json) { return new Gson().fromJson(json, Block.class); }
 }

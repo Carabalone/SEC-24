@@ -19,22 +19,31 @@ import java.util.logging.LogManager;
 public class Link {
 
     private static final CustomLogger LOGGER = new CustomLogger(Link.class.getName());
+
     // Time to wait for an ACK before resending the message
     private final int BASE_SLEEP_TIME;
+
     // UDP Socket
     private final DatagramSocket socket;
+
     // Map of all nodes in the network
     private final Map<String, ProcessConfig> nodes = new ConcurrentHashMap<>();
+
     // Reference to the node itself
     private final ProcessConfig config;
+
     // Class to deserialize messages to
     private final Class<? extends Message> messageClass;
+
     // Set of received messages from specific node (prevent duplicates)
     private final Map<String, CollapsingSet> receivedMessages = new ConcurrentHashMap<>();
+
     // Set of received ACKs from specific node
     private final CollapsingSet receivedAcks = new CollapsingSet();
+
     // Message counter
     private final AtomicInteger messageCounter = new AtomicInteger(0);
+
     // Send messages to self by pushing to queue instead of through the network
     private final Queue<Message> localhostQueue = new ConcurrentLinkedQueue<>();
 
@@ -42,16 +51,6 @@ public class Link {
 
     public Link(ProcessConfig self, int port, ProcessConfig[] nodes, Class<? extends Message> messageClass) {
         this(self, port, nodes, messageClass, false, 200, false);
-    }
-
-   public Link(ProcessConfig self, int port, ProcessConfig[] nodes, Class<? extends Message> messageClass,
-            boolean activateLogs, int baseSleepTime) {
-        this(self, port, nodes, messageClass, activateLogs, baseSleepTime, false);
-    }
-
-    public Link(ProcessConfig self, int port, ProcessConfig[] nodes, Class<? extends Message> messageClass,
-                boolean isClient) {
-        this(self, port, nodes, messageClass, false, 200, isClient);
     }
 
     public Link(ProcessConfig self, int port, ProcessConfig[] nodes, Class<? extends Message> messageClass,
@@ -121,7 +120,6 @@ public class Link {
                 // If the message is not ACK, it will be resent
                 InetAddress destAddress = InetAddress.getByName(node.getHostname());
                 int destPort = isClient ? node.getClientPort() : node.getPort();
-                int count = 1;
                 int messageId = data.getMessageId();
                 int sleepTime = BASE_SLEEP_TIME;
 
@@ -192,7 +190,6 @@ public class Link {
                 // Create UDP packet
                 DatagramPacket packet = new DatagramPacket(buf, buf.length, hostname, port);
                 socket.send(packet);
-
             } catch (IOException e) {
                 e.printStackTrace();
                 throw new HDSSException(ErrorMessage.SocketSendingError);
@@ -261,9 +258,8 @@ public class Link {
         boolean isRepeated = !receivedMessages.get(message.getSenderId()).add(messageId);
         Type originalType = message.getType();
         // Message already received (add returns false if already exists) => Discard
-        if (isRepeated) {
+        if (isRepeated)
             message.setType(Message.Type.IGNORE);
-        }
 
         switch (message.getType()) {
             case PRE_PREPARE -> {
@@ -277,7 +273,6 @@ public class Link {
                 ConsensusMessage consensusMessage = (ConsensusMessage) message;
                 if (consensusMessage.getReplyTo() != null && consensusMessage.getReplyTo().equals(config.getId()))
                     receivedAcks.add(consensusMessage.getReplyToMessageId());
-
                 return message;
             }
             case COMMIT -> {

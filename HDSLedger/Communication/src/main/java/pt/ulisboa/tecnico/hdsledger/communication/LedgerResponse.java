@@ -20,10 +20,6 @@ public class LedgerResponse extends Message {
         this.requestId = requestId;
     }
 
-    public LedgerResponseAppend deserializeAppend() {
-        return new Gson().fromJson(this.getResponse(), LedgerResponseAppend.class);
-    }
-
     public LedgerResponseBalance deserializeBalance() {
         return new Gson().fromJson(this.getResponse(), LedgerResponseBalance.class);
     }

@@ -19,13 +19,7 @@ public class LedgerResponseTransfer extends Message {
 
     public long getSourceBalance() { return sourceBalance; }
 
-    public void setSourceBalance(long sourceBalance) { this.sourceBalance = sourceBalance; }
-
     public long getDestinationBalance() { return destinationBalance; }
 
-    public void setDestinationBalance(long destinationBalance) { this.destinationBalance = destinationBalance; }
-
     public long getPayedFee() { return payedFee; }
-
-    public void setPayedFee(long payedFee) { this.payedFee = payedFee; }
 }
